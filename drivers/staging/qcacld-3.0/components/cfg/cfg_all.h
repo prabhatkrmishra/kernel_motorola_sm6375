@@ -18,6 +18,7 @@
 
 #include "cfg_define.h"
 #include "cfg_converged.h"
+#include "cfg_mlme.h"
 
 #ifdef CONVERGED_P2P_ENABLE
 #include "wlan_p2p_cfg.h"
@@ -37,8 +38,10 @@
 #define CFG_NAN_ALL
 #endif
 
+/* Maintain Alphabetic order here while adding components */
 #define CFG_ALL \
 	CFG_CONVERGED_ALL \
+	CFG_MLME_ALL \
+	CFG_NAN_ALL \
 	CFG_P2P_ALL \
-	CFG_TDLS_ALL \
-	CFG_NAN_ALL
+	CFG_TDLS_ALL
