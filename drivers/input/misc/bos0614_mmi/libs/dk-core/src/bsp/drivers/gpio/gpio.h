@@ -27,17 +27,18 @@
 #include <linux/types.h>
 
 typedef struct _GPIO Gpio;
+typedef struct _GPIO Gpio_t;
 
 typedef enum
 {
-    GPIOState_High,
+    GPIOState_High = 0,
     GPIOState_Low,
     GPIOState_Invalid
 } GPIOState;
 
 typedef enum
 {
-    GPIOISR_Falling,
+    GPIOISR_Falling = 0,
     GPIOISR_Rising,
     GPIOISR_Both,
     GPIOISR_None,
@@ -45,31 +46,23 @@ typedef enum
 
 typedef enum
 {
-    GPIODir_Input,
+    GPIODir_Input = 0,
     GPIODir_Output,
     GPIODir_Bidirectional
 } GPIODir;
 
-typedef void(*GPIOIsrCb)(Gpio *gpio, void *context, GPIOIsr event);
-
-typedef bool(*GPIOSet)(Gpio *gpio, GPIOState state);
-
-typedef GPIOState(*GPIOGet)(Gpio *gpio);
-
-typedef bool(*GPIORegisterISR)(Gpio *gpio, GPIOIsr isrMode, GPIOIsrCb cb, void *context, bool enable);
-
-typedef bool (*GPIOClearISR)(Gpio *gpio);
-
-typedef bool (*GPIOSetDir)(Gpio *gpio, GPIODir dir);
-
+typedef void (*GPIOIsrCb)(const Gpio *gpio, void *context, GPIOIsr event);
+typedef bool (*GPIOSet)(const Gpio *gpio, GPIOState state);
+typedef GPIOState (*GPIOGet)(const Gpio *gpio);
+typedef bool (*GPIORegisterISR)(const Gpio *gpio, GPIOIsr isrMode, GPIOIsrCb cb, void *context);
+typedef bool (*GPIOUnregisterISR)(const Gpio *gpio);
 
 struct _GPIO
 {
     GPIOSet set;
     GPIOGet get;
     GPIORegisterISR registerIsr;
-    GPIOClearISR clearIsr;
-    GPIOSetDir setDir;
+    GPIOUnregisterISR unregisterIsr;
 };
 
 #endif //DKCORE_GPIO_H
