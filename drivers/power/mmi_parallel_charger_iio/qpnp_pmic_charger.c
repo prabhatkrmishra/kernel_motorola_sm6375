@@ -36,39 +36,38 @@
 #include "mmi_charger_class.h"
 #include <linux/power_supply.h>
 #include "mmi_charger_core.h"
+#include "mmi_charger_core_iio.h"
 
 static int qpnp_pmic_enable_charging(struct mmi_charger_device *chrg, bool en)
 {
-	int rc;
-	union power_supply_propval prop = {0,};
+	int rc = 0;
+	struct mmi_charger_manager *chip = dev_get_drvdata(&chrg->dev);
 
-	if (!chrg->chrg_psy)
+	if (!chip)
 		return -ENODEV;
 
-	prop.intval = en;
-	rc = power_supply_set_property(chrg->chrg_psy,
-				POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED, &prop);
-
+	rc = mmi_charger_write_iio_chan(chip, SMB5_CHARGING_ENABLED, en);
 	if (!rc) {
-		chrg->charger_enabled = !!prop.intval;
-	} else
+		chrg->charger_enabled = en;
+	} else {
 		chrg->charger_enabled  = false;
+	}
 
 	return rc;
 }
 
 static int qpnp_pmic_is_charging_enabled(struct mmi_charger_device *chrg, bool *en)
 {
-	int rc;
-	union power_supply_propval prop = {0,};
+	int rc = 0;
+	int value;
+	struct mmi_charger_manager *chip = dev_get_drvdata(&chrg->dev);
 
-	if (!chrg->chrg_psy)
+	if (!chip)
 		return -ENODEV;
 
-	rc = power_supply_get_property(chrg->chrg_psy,
-				POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED, &prop);
+	rc = mmi_charger_read_iio_chan(chip, SMB5_CHARGING_ENABLED, &value);
 	if (!rc) {
-		chrg->charger_enabled = !!prop.intval;
+		chrg->charger_enabled = !!value;
 	} else
 		chrg->charger_enabled  = false;
 
@@ -112,18 +111,16 @@ static int qpnp_pmic_set_charging_current(struct mmi_charger_device *chrg, u32 u
 
 static int qpnp_pmic_get_input_current_settled(struct mmi_charger_device *chrg, u32 *uA)
 {
-	int rc;
-	struct power_supply	*chrg_psy;
-	union power_supply_propval prop = {0,};
+	int rc = 0;
+	int value;
+	struct mmi_charger_manager *chip = dev_get_drvdata(&chrg->dev);
 
-	chrg_psy = power_supply_get_by_name("usb");
-	if (!chrg_psy)
+	if (!chip)
 		return -ENODEV;
 
-	rc = power_supply_get_property(chrg_psy,
-				POWER_SUPPLY_PROP_HW_CURRENT_MAX, &prop);
+	rc = mmi_charger_read_iio_chan(chip, SMB5_HW_CURRENT_MAX, &value);
 	if (!rc)
-		chrg->input_curr_setted = prop.intval;
+		chrg->input_curr_setted = value;
 	*uA = chrg->input_curr_setted;
 
 	return rc;
@@ -132,6 +129,7 @@ static int qpnp_pmic_get_input_current_settled(struct mmi_charger_device *chrg, 
 static int qpnp_pmic_update_charger_status(struct mmi_charger_device *chrg)
 {
 	int rc;
+	bool value = 0;
 	struct power_supply	*usb_psy;
 	union power_supply_propval prop = {0,};
 
@@ -163,7 +161,7 @@ static int qpnp_pmic_update_charger_status(struct mmi_charger_device *chrg)
 		chrg->charger_data.vbus_volt = prop.intval;
 
 	rc = power_supply_get_property(usb_psy,
-				POWER_SUPPLY_PROP_INPUT_CURRENT_NOW, &prop);
+				POWER_SUPPLY_PROP_CURRENT_NOW, &prop);
 	if (!rc)
 		chrg->charger_data.ibus_curr = prop.intval;
 
@@ -172,10 +170,9 @@ static int qpnp_pmic_update_charger_status(struct mmi_charger_device *chrg)
 	if (!rc)
 		chrg->charger_data.vbus_pres = !!prop.intval;
 
-	rc = power_supply_get_property(chrg->chrg_psy,
-				POWER_SUPPLY_PROP_BATTERY_CHARGING_ENABLED, &prop);
+	rc = qpnp_pmic_is_charging_enabled(chrg, &value);
 	if (!rc)
-		chrg->charger_enabled= !!prop.intval;
+		chrg->charger_enabled= !!value;
 
 	chrg_dev_info(chrg, "QPNP SW chrg: status update: --- info---");
 	chrg_dev_info(chrg, "vbatt %d\n", chrg->charger_data.vbatt_volt);
