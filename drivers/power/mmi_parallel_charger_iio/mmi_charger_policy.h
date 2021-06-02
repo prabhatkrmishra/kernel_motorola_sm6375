@@ -29,4 +29,5 @@
  #define __MMI_CHRG_POLICY_H_
 extern void mmi_chrg_policy_clear(struct mmi_charger_manager *chip);
 extern void mmi_chrg_enable_all_cp(struct mmi_charger_manager *chip, int val);
+extern void mmi_qc3p_chrg_policy_clear(struct mmi_charger_manager *chip);
 #endif
