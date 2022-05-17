@@ -3664,6 +3664,27 @@ static int sde_kms_get_dsc_count(const struct msm_kms *kms,
 	return 0;
 }
 
+static int sde_kms_set_panel_feature(const struct msm_kms *kms,
+		struct panel_param_info param_info)
+{
+	struct sde_kms *sde_kms;
+	struct dsi_display *display;
+	struct msm_param_info param_info_msm;
+
+	if (!kms) {
+		SDE_ERROR("invalid input args\n");
+		return -EINVAL;
+	}
+
+	sde_kms = to_sde_kms(kms);
+	param_info_msm.param_idx = (enum msm_param_id)param_info.param_idx;
+	param_info_msm.value = param_info.value;
+	display = (struct dsi_display *)sde_kms->dsi_displays[0];
+	dsi_display_set_param(display, &param_info_msm);
+
+	return 0;
+}
+
 static int _sde_kms_null_commit(struct drm_device *dev,
 		struct drm_encoder *enc)
 {
@@ -3886,7 +3907,7 @@ static int sde_kms_pm_suspend(struct device *dev)
 	struct drm_connector_list_iter conn_iter;
 	struct drm_atomic_state *state = NULL;
 	struct sde_kms *sde_kms;
-	int ret = 0, num_crtcs = 0;
+	int ret = 0, num_crtcs = 0, rc = 0;
 
 	if (!dev)
 		return -EINVAL;
@@ -3903,8 +3924,12 @@ static int sde_kms_pm_suspend(struct device *dev)
 
 	/* if a display stuck in CS trigger a null commit to complete handoff */
 	drm_for_each_encoder(enc, ddev) {
-		if (sde_encoder_in_cont_splash(enc) && enc->crtc)
-			_sde_kms_null_commit(ddev, enc);
+		if (sde_encoder_in_cont_splash(enc) && enc->crtc) {
+			rc = _sde_kms_null_commit(ddev, enc);
+			if (rc)
+				SDE_ERROR("enc:%d null commit failed during suspend, rc:%d\n",
+						DRMID(enc), rc);
+		}
 	}
 
 	/* acquire modeset lock(s) */
@@ -4132,6 +4157,7 @@ static const struct msm_kms_funcs kms_funcs = {
 	.trigger_null_flush = sde_kms_trigger_null_flush,
 	.get_mixer_count = sde_kms_get_mixer_count,
 	.get_dsc_count = sde_kms_get_dsc_count,
+	.set_panel_feature = sde_kms_set_panel_feature,
 };
 
 static int _sde_kms_mmu_destroy(struct sde_kms *sde_kms)
