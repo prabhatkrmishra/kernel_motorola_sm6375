@@ -2510,6 +2510,12 @@ static void rcu_init_one_nocb(struct rcu_node *rnp)
 {
 }
 
+static void wake_nocb_gp(struct rcu_data *rdp, bool force,
+			 unsigned long flags)
+{
+	rcu_nocb_unlock_irqrestore(rdp, flags);
+}
+
 static bool rcu_nocb_flush_bypass(struct rcu_data *rdp, struct rcu_head *rhp,
 				  unsigned long j)
 {
