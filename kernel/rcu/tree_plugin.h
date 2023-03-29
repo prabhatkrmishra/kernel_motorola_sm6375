@@ -2337,11 +2337,20 @@ lazy_rcu_shrink_scan(struct shrinker *shrink, struct shrink_control *sc)
 		if (!rcu_segcblist_is_offloaded(&rdp->cblist))
 			continue;
 
-		_count = READ_ONCE(rdp->lazy_len);
-
-		if (_count == 0)
+		if (!READ_ONCE(rdp->lazy_len))
 			continue;
+
 		rcu_nocb_lock_irqsave(rdp, flags);
+		/*
+		 * Recheck under the nocb lock. Since we are not holding the bypass
+		 * lock we may still race with increments from the enqueuer but still
+		 * we know for sure if there is at least one lazy callback.
+		 */
+		_count = READ_ONCE(rdp->lazy_len);
+		if (!_count) {
+			rcu_nocb_unlock_irqrestore(rdp, flags);
+			continue;
+		}
 		WARN_ON_ONCE(!rcu_nocb_flush_bypass(rdp, NULL, jiffies, false));
 		wake_nocb_gp(rdp, false, flags);
 		sc->nr_to_scan -= _count;
