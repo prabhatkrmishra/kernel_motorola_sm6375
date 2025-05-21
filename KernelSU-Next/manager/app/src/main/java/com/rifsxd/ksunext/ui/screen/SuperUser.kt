@@ -92,7 +92,7 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
                                     }
                                 )
                             }, onClick = {
-                                viewModel.showSystemApps = !viewModel.showSystemApps
+                                viewModel.updateShowSystemApps(!viewModel.showSystemApps)
                                 showDropdown = false
                             })
                         }
