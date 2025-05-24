@@ -88,6 +88,8 @@ import com.rifsxd.ksunext.ui.component.rememberLoadingDialog
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.getBugreportFile
 import com.rifsxd.ksunext.ui.util.*
+import com.rifsxd.ksunext.ui.util.isGlobalNamespaceEnabled
+import com.rifsxd.ksunext.ui.util.setGlobalNamespaceEnabled
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
@@ -101,6 +103,8 @@ import java.time.format.DateTimeFormatter
 fun SettingScreen(navigator: DestinationsNavigator) {
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
     val snackBarHost = LocalSnackbarHost.current
+    var isGlobalNamespaceEnabled by rememberSaveable { mutableStateOf(false) }
+    isGlobalNamespaceEnabled = isGlobalNamespaceEnabled()
 
     val isManager = Natives.becomeManager(ksuApp.packageName)
     val ksuVersion = if (isManager) Natives.version else null
@@ -196,6 +200,23 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                         }
                     }
                 }
+                
+                SwitchItem(
+                    icon = Icons.Filled.Engineering,
+                    title = stringResource(id = R.string.settings_global_namespace_mode),
+                    summary = stringResource(id = R.string.settings_global_namespace_mode_summary),
+                    checked = isGlobalNamespaceEnabled,
+                    onCheckedChange = {
+                        setGlobalNamespaceEnabled(
+                            if (isGlobalNamespaceEnabled) {
+                                "0"
+                            } else {
+                                "1"
+                            }
+                        )
+                        isGlobalNamespaceEnabled = it
+                    }
+                )
             }
 
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
