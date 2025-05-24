@@ -24,6 +24,11 @@ struct Asset;
 #[folder = "bin/arm"]
 struct Asset;
 
+#[cfg(all(target_arch = "x86_64", target_os = "android"))]
+#[derive(RustEmbed)]
+#[folder = "bin/x86_64"]
+struct Asset;
+
 pub fn ensure_binaries(ignore_if_exist: bool) -> Result<()> {
     for file in Asset::iter() {
         if file == "ksuinit" || file.ends_with(".ko") {
