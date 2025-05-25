@@ -40,7 +40,7 @@ import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.dergoogler.mmrl.ui.component.text.TextRow
 import com.ramcosta.composedestinations.annotation.Destination
 import com.ramcosta.composedestinations.annotation.RootGraph
-// import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination // DISBAND LKM MODE
+import com.ramcosta.composedestinations.generated.destinations.InstallScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -66,9 +66,9 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             TopBar(
                 kernelVersion,
                 ksuVersion,
-                // onInstallClick = {
-                //     navigator.navigate(InstallScreenDestination)
-                // }, // DISBAND LKM MODE
+                onInstallClick = {
+                    navigator.navigate(InstallScreenDestination)
+                },
                 scrollBehavior = scrollBehavior
             )
         },
@@ -87,7 +87,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
             }
 
             StatusCard(kernelVersion, ksuVersion, lkmMode) {
-                // navigator.navigate(InstallScreenDestination) // DISBAND LKM MODE
+                navigator.navigate(InstallScreenDestination)
             }
             if (isManager && Natives.requireNewKernel()) {
                 WarningCard(
@@ -173,20 +173,22 @@ fun RebootDropdownItem(@StringRes id: Int, reason: String = "") {
 private fun TopBar(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
-    // onInstallClick: () -> Unit, // DISBAND LKM MODE
+    onInstallClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior? = null
 ) {
     TopAppBar(
         title = { Text(stringResource(R.string.app_name)) },
         actions = {
-            // if (kernelVersion.isGKI()) {
-            //     IconButton(onClick = onInstallClick) {
-            //         Icon(
-            //             imageVector = Icons.Filled.Archive,
-            //             contentDescription = stringResource(id = R.string.install)
-            //         )
-            //     }
-            // } // DISBAND LKM MODE
+            if (ksuVersion != null) {
+                if (kernelVersion.isGKI()) {
+                    IconButton(onClick = onInstallClick) {
+                        Icon(
+                            imageVector = Icons.Filled.Archive,
+                            contentDescription = stringResource(id = R.string.install)
+                        )
+                    }
+                }
+            }
 
             if (ksuVersion != null) {
                 var showDropdown by remember { mutableStateOf(false) }
@@ -257,16 +259,17 @@ private fun StatusCard(
                     tapCount++
                     if (tapCount == 10) {
                         Toast.makeText(context, "Never gonna give you up! 💜", Toast.LENGTH_SHORT).show()
-                        // tapCount = 0
                         val url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
-                        context.startActivity(intent)
+                        if (ksuVersion != null) {
+                            context.startActivity(intent)
+                        } else {
+                            onClickInstall()
+                        }
+                    } else if (ksuVersion == null && kernelVersion.isGKI()) {
+                        onClickInstall()
                     }
-
-                    // if (kernelVersion.isGKI()) {
-                    //     onClickInstall()
-                    // }
                 }
                 .padding(24.dp), verticalAlignment = Alignment.CenterVertically) {
             when {
@@ -344,20 +347,20 @@ private fun StatusCard(
                     }
                 }
 
-                // kernelVersion.isGKI() -> {
-                //     Icon(Icons.Filled.Report, stringResource(R.string.lkm_mode_deprecated))
-                //     Column(Modifier.padding(start = 20.dp)) {
-                //         Text(
-                //             text = stringResource(R.string.lkm_mode_deprecated),
-                //             style = MaterialTheme.typography.titleMedium
-                //         )
-                //         Spacer(Modifier.height(4.dp))
-                //         Text(
-                //             text = stringResource(R.string.lkm_alternative_suggestion),
-                //             style = MaterialTheme.typography.bodyMedium
-                //         )
-                //     }
-                // }
+                kernelVersion.isGKI() -> {
+                    Icon(Icons.Filled.Report, stringResource(R.string.home_not_installed))
+                    Column(Modifier.padding(start = 20.dp)) {
+                        Text(
+                            text = stringResource(R.string.home_not_installed),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            text = stringResource(R.string.home_click_to_install),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
 
                 else -> {
                     Icon(Icons.Filled.Dangerous, stringResource(R.string.home_failure))
