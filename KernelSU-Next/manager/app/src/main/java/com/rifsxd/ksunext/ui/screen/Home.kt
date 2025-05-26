@@ -35,6 +35,7 @@ import androidx.compose.ui.text.toUpperCase
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.core.content.pm.PackageInfoCompat
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.dergoogler.mmrl.ui.component.LabelItem
 import com.dergoogler.mmrl.ui.component.LabelItemDefaults
 import com.dergoogler.mmrl.ui.component.text.TextRow
@@ -49,6 +50,7 @@ import com.rifsxd.ksunext.R
 import com.rifsxd.ksunext.ui.component.rememberConfirmDialog
 import com.rifsxd.ksunext.ui.util.*
 import com.rifsxd.ksunext.ui.util.module.LatestVersionInfo
+import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
 import java.util.*
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -86,7 +88,13 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 if (it >= Natives.MINIMAL_SUPPORTED_KERNEL_LKM && kernelVersion.isGKI()) Natives.isLkmMode else null
             }
 
-            StatusCard(kernelVersion, ksuVersion, lkmMode) {
+            val moduleViewModel: ModuleViewModel = viewModel()
+            val moduleUpdateCount = moduleViewModel.moduleList.count { 
+                // Only count modules when update available (updateUrl is not empty)
+                moduleViewModel.checkUpdate(it).first.isNotEmpty()
+            }
+
+            StatusCard(kernelVersion, ksuVersion, lkmMode, moduleUpdateCount) {
                 navigator.navigate(InstallScreenDestination)
             }
             if (isManager && Natives.requireNewKernel()) {
@@ -241,6 +249,7 @@ private fun StatusCard(
     kernelVersion: KernelVersion,
     ksuVersion: Int?,
     lkmMode: Boolean?,
+    moduleUpdateCount: Int = 0,
     onClickInstall: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -336,6 +345,14 @@ private fun StatusCard(
                             text = stringResource(R.string.home_module_count, getModuleCount()),
                             style = MaterialTheme.typography.bodyMedium
                         )
+
+                        if (moduleUpdateCount > 0) {
+                            Text(
+                                text = stringResource(R.string.home_module_update_count, moduleUpdateCount),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
 
                         val suSFS = getSuSFS()
                         if (suSFS == "Supported") {
