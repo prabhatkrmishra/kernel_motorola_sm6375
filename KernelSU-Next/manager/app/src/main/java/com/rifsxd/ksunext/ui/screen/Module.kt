@@ -381,12 +381,6 @@ private fun ModuleList(
     val hasShownWarning =
         rememberSaveable { mutableStateOf(prefs.getBoolean("has_shown_warning", false)) }
 
-    var useOverlayFs by rememberSaveable {
-        mutableStateOf(
-            prefs.getBoolean("use_overlay_fs", false)
-        )
-    }
-
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
 

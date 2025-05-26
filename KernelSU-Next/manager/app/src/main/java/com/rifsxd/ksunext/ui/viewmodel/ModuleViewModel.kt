@@ -22,7 +22,6 @@ import java.util.Locale
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.util.HanziToPinyin
 import com.rifsxd.ksunext.ui.util.listModules
-import com.rifsxd.ksunext.ui.util.overlayFsAvailable
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -56,9 +55,6 @@ class ModuleViewModel : ViewModel() {
         val zipUrl: String,
         val changelog: String,
     )
-
-    var isOverlayAvailable by mutableStateOf(overlayFsAvailable())
-        private set
 
     var isRefreshing by mutableStateOf(false)
         private set
@@ -115,7 +111,6 @@ class ModuleViewModel : ViewModel() {
                 val oldModuleList = modules
 
                 kotlin.runCatching {
-                    isOverlayAvailable = overlayFsAvailable()
                     val result = listModules()
                     Log.i(TAG, "result: $result")
 
