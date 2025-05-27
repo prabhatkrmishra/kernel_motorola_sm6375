@@ -17,14 +17,14 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 
 private val DarkColorScheme = darkColorScheme(
-    primary = YELLOW,
-    secondary = YELLOW_DARK,
+    primary = PRIMARY,
+    secondary = PRIMARY_DARK,
     tertiary = SECONDARY_DARK
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = YELLOW,
-    secondary = YELLOW_LIGHT,
+    primary = PRIMARY,
+    secondary = PRIMARY_LIGHT,
     tertiary = SECONDARY_LIGHT
 )
 
@@ -33,9 +33,18 @@ fun KernelSUTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     // Dynamic color is available on Android 12+
     dynamicColor: Boolean = true,
+    amoledMode: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val colorScheme = when {
+        amoledMode && darkTheme && dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
+            val context = LocalContext.current
+            val dynamicScheme = dynamicDarkColorScheme(context)
+            dynamicScheme.copy(
+                background = AMOLED_BLACK,
+                surface = AMOLED_BLACK
+            )
+        }
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
             if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
