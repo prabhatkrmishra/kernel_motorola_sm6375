@@ -28,6 +28,16 @@ private val LightColorScheme = lightColorScheme(
     tertiary = SECONDARY_LIGHT
 )
 
+fun Color.blend(other: Color, ratio: Float): Color {
+    val inverse = 1f - ratio
+    return Color(
+        red = red * inverse + other.red * ratio,
+        green = green * inverse + other.green * ratio,
+        blue = blue * inverse + other.blue * ratio,
+        alpha = alpha
+    )
+}
+
 @Composable
 fun KernelSUTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
@@ -42,7 +52,13 @@ fun KernelSUTheme(
             val dynamicScheme = dynamicDarkColorScheme(context)
             dynamicScheme.copy(
                 background = AMOLED_BLACK,
-                surface = AMOLED_BLACK
+                surface = AMOLED_BLACK,
+                surfaceVariant = dynamicScheme.surfaceVariant.blend(AMOLED_BLACK, 0.6f),
+                surfaceContainer = dynamicScheme.surfaceContainer.blend(AMOLED_BLACK, 0.6f),
+                surfaceContainerLow = dynamicScheme.surfaceContainerLow.blend(AMOLED_BLACK, 0.6f),
+                surfaceContainerLowest = dynamicScheme.surfaceContainerLowest.blend(AMOLED_BLACK, 0.6f),
+                surfaceContainerHigh = dynamicScheme.surfaceContainerHigh.blend(AMOLED_BLACK, 0.6f),
+                surfaceContainerHighest = dynamicScheme.surfaceContainerHighest.blend(AMOLED_BLACK, 0.6f),
             )
         }
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
