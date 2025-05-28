@@ -679,10 +679,7 @@ fun ModuleItem(
                         LabelItem(
                             text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
                             style = if (module.enabled)
-                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
                             else
                                 com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
                                     containerColor = MaterialTheme.colorScheme.errorContainer,
@@ -690,12 +687,31 @@ fun ModuleItem(
                                 )
                         )
                         // Update notifier indicator
+                        if (module.hasWebUi) {
+                            LabelItem(
+                                text = stringResource(R.string.webui),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            )
+                        }
+                        // Update notifier indicator
+                        if (module.hasActionScript) {
+                            LabelItem(
+                                text = stringResource(R.string.action),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            )
+                        }
                         if (updateUrl.isNotEmpty() && !module.remove) {
                             LabelItem(
                                 text = stringResource(R.string.module_update),
                                 style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    containerColor = MaterialTheme.colorScheme.onTertiary,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             )
                         }
@@ -774,7 +790,7 @@ fun ModuleItem(
                         // WebUI
                         if (module.hasWebUi) {
                             DropdownMenuItem(
-                                text = { Text(stringResource(R.string.open)) },
+                                text = { Text(stringResource(R.string.webui)) },
                                 onClick = {
                                     menuExpanded = false
                                     onClick(module)
