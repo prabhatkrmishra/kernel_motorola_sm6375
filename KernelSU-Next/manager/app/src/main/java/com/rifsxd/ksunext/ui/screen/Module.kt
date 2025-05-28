@@ -8,6 +8,7 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -669,51 +670,88 @@ fun ModuleItem(
                 val moduleUpdateJsonEmpty = stringResource(id = R.string.module_update_json_empty)
 
                 Column(
-                    modifier = Modifier.fillMaxWidth(0.8f)
+                    modifier = Modifier.fillMaxWidth()
                 ) {
+                    // Combined row: left and right labels
                     Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        // Enabled/Disabled indicator
-                        LabelItem(
-                            text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
-                            style = if (module.enabled)
-                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
-                            else
-                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.errorContainer,
-                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                        )
-                        // Update notifier indicator
-                        if (module.hasWebUi) {
+                        // Left side: status, uninstall/restore, update
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             LabelItem(
-                                text = stringResource(R.string.webui),
-                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                )
+                                text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                                style = if (module.enabled)
+                                    com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
+                                else
+                                    com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    ),
+                                modifier = Modifier.clickable { onCheckChanged(!module.enabled) }
                             )
+                            if (module.remove) {
+                                LabelItem(
+                                    text = stringResource(R.string.restore),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                    ),
+                                    modifier = Modifier.clickable { onRestore(module) }
+                                )
+                            } else {
+                                LabelItem(
+                                    text = stringResource(R.string.uninstall),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.errorContainer,
+                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                    ),
+                                    modifier = Modifier.clickable { onUninstall(module) }
+                                )
+                            }
+                            if (updateUrl.isNotEmpty() && !module.remove) {
+                                LabelItem(
+                                    text = stringResource(R.string.module_update),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.onTertiary,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                    ),
+                                    modifier = Modifier.clickable { onUpdate(module) }
+                                )
+                            }
                         }
-                        // Update notifier indicator
-                        if (module.hasActionScript) {
-                            LabelItem(
-                                text = stringResource(R.string.action),
-                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        // Right side: WebUI and Action
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (module.hasWebUi) {
+                                LabelItem(
+                                    text = stringResource(R.string.webui),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                    ),
+                                    modifier = Modifier.clickable { onClick(module) }
                                 )
-                            )
-                        }
-                        if (updateUrl.isNotEmpty() && !module.remove) {
-                            LabelItem(
-                                text = stringResource(R.string.module_update),
-                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                    containerColor = MaterialTheme.colorScheme.onTertiary,
-                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                            }
+                            if (module.hasActionScript) {
+                                LabelItem(
+                                    text = stringResource(R.string.action),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                    ),
+                                    modifier = Modifier.clickable {
+                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                                        viewModel.markNeedRefresh()
+                                    }
                                 )
-                            )
+                            }
                         }
                     }
 
@@ -769,86 +807,6 @@ fun ModuleItem(
                             fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                             textDecoration = textDecoration
                         )
-                    }
-                }
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    var menuExpanded by remember { mutableStateOf(false) }
-                    IconButton(onClick = { menuExpanded = true }) {
-                        Icon(
-                            imageVector = Icons.Filled.MoreVert,
-                            contentDescription = "Module options"
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuExpanded,
-                        onDismissRequest = { menuExpanded = false }
-                    ) {
-                        // WebUI
-                        if (module.hasWebUi) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.webui)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onClick(module)
-                                }
-                            )
-                        }
-                        // ActionScript
-                        if (module.hasActionScript) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.action)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
-                                    viewModel.markNeedRefresh()
-                                }
-                            )
-                        }
-                        // Update
-                        if (updateUrl.isNotEmpty() && !module.remove) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.module_update)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onUpdate(module)
-                                }
-                            )
-                        }
-                        // Enable/Disable
-                        DropdownMenuItem(
-                            text = {
-                                Text(
-                                    if (module.enabled) stringResource(R.string.disable)
-                                    else stringResource(R.string.enable)
-                                )
-                            },
-                            onClick = {
-                                menuExpanded = false
-                                onCheckChanged(!module.enabled)
-                            }
-                        )
-                        // Restore/Uninstall
-                        if (module.remove) {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.restore)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onRestore(module)
-                                }
-                            )
-                        } else {
-                            DropdownMenuItem(
-                                text = { Text(stringResource(R.string.uninstall)) },
-                                onClick = {
-                                    menuExpanded = false
-                                    onUninstall(module)
-                                }
-                            )
-                        }
                     }
                 }
             }
