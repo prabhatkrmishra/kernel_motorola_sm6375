@@ -660,7 +660,7 @@ fun ModuleItem(
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 val moduleVersion = stringResource(id = R.string.module_version)
                 val moduleAuthor = stringResource(id = R.string.module_author)
@@ -670,88 +670,57 @@ fun ModuleItem(
                 val moduleUpdateJsonEmpty = stringResource(id = R.string.module_update_json_empty)
 
                 Column(
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth(0.8f)
                 ) {
-                    // Combined row: left and right labels
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        // Left side: status, uninstall/restore, update
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        LabelItem(
+                            text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
+                            style = if (module.enabled)
+                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
+                            else
+                                com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
+                        )
+                        if (module.remove) {
                             LabelItem(
-                                text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
-                                style = if (module.enabled)
-                                    com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
-                                else
-                                    com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    ),
-                                modifier = Modifier.clickable { onCheckChanged(!module.enabled) }
+                                text = stringResource(R.string.uninstall),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.onErrorContainer
+                                )
                             )
-                            if (module.remove) {
-                                LabelItem(
-                                    text = stringResource(R.string.restore),
-                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                    ),
-                                    modifier = Modifier.clickable { onRestore(module) }
-                                )
-                            } else {
-                                LabelItem(
-                                    text = stringResource(R.string.uninstall),
-                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.errorContainer,
-                                        contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                    ),
-                                    modifier = Modifier.clickable { onUninstall(module) }
-                                )
-                            }
-                            if (updateUrl.isNotEmpty() && !module.remove) {
-                                LabelItem(
-                                    text = stringResource(R.string.module_update),
-                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.onTertiary,
-                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
-                                    ),
-                                    modifier = Modifier.clickable { onUpdate(module) }
-                                )
-                            }
                         }
-                        // Right side: WebUI and Action
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (module.hasWebUi) {
-                                LabelItem(
-                                    text = stringResource(R.string.webui),
-                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                                    ),
-                                    modifier = Modifier.clickable { onClick(module) }
+                        if (updateUrl.isNotEmpty() && !module.remove) {
+                            LabelItem(
+                                text = stringResource(R.string.module_update),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.onTertiary,
+                                    contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
-                            }
-                            if (module.hasActionScript) {
-                                LabelItem(
-                                    text = stringResource(R.string.action),
-                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                    ),
-                                    modifier = Modifier.clickable {
-                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
-                                        viewModel.markNeedRefresh()
-                                    }
+                            )
+                        }
+                        if (module.hasWebUi) {
+                            LabelItem(
+                                text = stringResource(R.string.webui),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
                                 )
-                            }
+                            )
+                        }
+                        if (module.hasActionScript) {
+                            LabelItem(
+                                text = stringResource(R.string.action),
+                                style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                )
+                            )
                         }
                     }
 
@@ -807,6 +776,90 @@ fun ModuleItem(
                             fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
                             textDecoration = textDecoration
                         )
+                    }
+                }
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    var expanded by remember { mutableStateOf(false) }
+                    IconButton(onClick = { expanded = true }) {
+                        Icon(
+                            Icons.Filled.MoreVert,
+                            contentDescription = "Module actions"
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        if (updateUrl.isNotEmpty() && !module.remove) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.module_update)) },
+                                onClick = {
+                                    expanded = false
+                                    onUpdate(module)
+                                }
+                            )
+                        }
+                        if (module.hasWebUi) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.webui)) },
+                                onClick = {
+                                    expanded = false
+                                    onClick(module)
+                                }
+                            )
+                        }
+                        if (module.hasActionScript) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.action)) },
+                                onClick = {
+                                    expanded = false
+                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                                    viewModel.markNeedRefresh()
+                                }
+                            )
+                        }
+
+                        if (
+                            (updateUrl.isNotEmpty() && !module.remove) ||
+                            module.hasWebUi ||
+                            module.hasActionScript
+                        ) {
+                            HorizontalDivider()
+                        }
+
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    if (module.enabled) stringResource(R.string.disable)
+                                    else stringResource(R.string.enable)
+                                )
+                            },
+                            onClick = {
+                                expanded = false
+                                onCheckChanged(!module.enabled)
+                            }
+                        )
+                        if (module.remove) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.restore)) },
+                                onClick = {
+                                    expanded = false
+                                    onRestore(module)
+                                }
+                            )
+                        } else {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.uninstall)) },
+                                onClick = {
+                                    expanded = false
+                                    onUninstall(module)
+                                }
+                            )
+                        }
                     }
                 }
             }
