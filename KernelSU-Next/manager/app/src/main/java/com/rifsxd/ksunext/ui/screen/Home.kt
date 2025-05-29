@@ -204,7 +204,7 @@ private fun TopBar(
                     showDropdown = true
                 }) {
                     Icon(
-                        imageVector = Icons.Filled.Refresh,
+                        imageVector = Icons.Filled.PowerSettingsNew,
                         contentDescription = stringResource(id = R.string.reboot)
                     )
 
@@ -266,7 +266,9 @@ private fun StatusCard(
                 .fillMaxWidth()
                 .clickable {
                     tapCount++
-                    if (tapCount == 10) {
+                    if (tapCount == 5) {
+                        Toast.makeText(context, "What are you doing? 🤔", Toast.LENGTH_SHORT).show()
+                    } else if (tapCount == 10) {
                         Toast.makeText(context, "Never gonna give you up! 💜", Toast.LENGTH_SHORT).show()
                         val url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
                         val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, android.net.Uri.parse(url))
