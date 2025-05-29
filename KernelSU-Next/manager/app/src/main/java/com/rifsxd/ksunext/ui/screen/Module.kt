@@ -603,6 +603,7 @@ private fun ModuleList(
                                         updatedModule.first,
                                         "${module.name}-${updatedModule.second}.zip"
                                     )
+                                    viewModel.markNeedRefresh()
                                 }
                             },
                             onClick = {
@@ -688,14 +689,14 @@ fun ModuleItem(
                         )
                         if (module.remove) {
                             LabelItem(
-                                text = stringResource(R.string.uninstall),
+                                text = stringResource(R.string.uninstalled),
                                 style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
                                     containerColor = MaterialTheme.colorScheme.errorContainer,
                                     contentColor = MaterialTheme.colorScheme.onErrorContainer
                                 )
                             )
                         }
-                        if (updateUrl.isNotEmpty() && !module.remove) {
+                        if (updateUrl.isNotEmpty() && !module.remove && !module.update) {
                             LabelItem(
                                 text = stringResource(R.string.module_update),
                                 style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
@@ -703,6 +704,17 @@ fun ModuleItem(
                                     contentColor = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             )
+                        }
+                        if (!module.remove) {
+                            if (module.update) {
+                                LabelItem(
+                                    text = stringResource(R.string.module_updated),
+                                    style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                        containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                                        contentColor = MaterialTheme.colorScheme.onTertiaryContainer
+                                    )
+                                )
+                            }
                         }
                         if (module.hasWebUi) {
                             LabelItem(
@@ -802,7 +814,9 @@ fun ModuleItem(
                                     onUpdate(module)
                                 }
                             )
+                            HorizontalDivider()
                         }
+                        
                         if (module.hasWebUi) {
                             DropdownMenuItem(
                                 text = { Text(stringResource(R.string.webui)) },
@@ -823,11 +837,7 @@ fun ModuleItem(
                             )
                         }
 
-                        if (
-                            (updateUrl.isNotEmpty() && !module.remove) ||
-                            module.hasWebUi ||
-                            module.hasActionScript
-                        ) {
+                        if (module.hasWebUi || module.hasActionScript ) {
                             HorizontalDivider()
                         }
 
