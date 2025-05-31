@@ -360,6 +360,21 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 }
             }
 
+            var useLagacyUI by rememberSaveable {
+                mutableStateOf(
+                    prefs.getBoolean("use_legacyui", false)
+                )
+            }
+            SwitchItem(
+                icon = Icons.Filled.ColorLens,
+                title = stringResource(id = R.string.settings_legacyui),
+                summary = stringResource(id = R.string.settings_legacyui_summary),
+                checked = useLagacyUI
+            ) {
+                prefs.edit().putBoolean("use_legacyui", it).apply()
+                useLagacyUI = it
+            }
+
             var enableAmoled by rememberSaveable {
                 mutableStateOf(
                     prefs.getBoolean("enable_amoled", false)
