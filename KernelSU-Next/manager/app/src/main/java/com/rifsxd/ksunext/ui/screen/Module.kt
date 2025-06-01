@@ -125,9 +125,9 @@ fun ModuleScreen(navigator: DestinationsNavigator) {
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     LaunchedEffect(Unit) {
+        viewModel.sortAToZ = prefs.getBoolean("module_sort_a_to_z", true)
+        viewModel.sortZToA = prefs.getBoolean("module_sort_z_to_a", false)
         if (viewModel.moduleList.isEmpty() || viewModel.isNeedRefresh) {
-            viewModel.sortAToZ = prefs.getBoolean("module_sort_a_to_z", true)
-            viewModel.sortZToA = prefs.getBoolean("module_sort_z_to_a", false)
             viewModel.fetchModuleList()
         }
     }
