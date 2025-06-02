@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.Wysiwyg
 import androidx.compose.material.icons.filled.*
@@ -696,6 +697,8 @@ fun ModuleItem(
             val useBanner = prefs.getBoolean("use_banner", true)
 
             if (useBanner && !useLagacyUI && module.banner.isNotEmpty()) {
+                val isDark = isSystemInDarkTheme()
+                val fadeColor = if (isDark) Color.Black else Color.White
                 Box(
                     modifier = Modifier
                         .matchParentSize(),
@@ -717,8 +720,8 @@ fun ModuleItem(
                             .background(
                                 Brush.verticalGradient(
                                     colors = listOf(
-                                        Color.Black.copy(alpha = 0.0f),
-                                        Color.Black.copy(alpha = 0.9f)
+                                        fadeColor.copy(alpha = 0.0f),
+                                        fadeColor.copy(alpha = 0.9f)
                                     ),
                                     startY = 0f,
                                     endY = Float.POSITIVE_INFINITY
