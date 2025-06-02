@@ -698,7 +698,19 @@ fun ModuleItem(
 
             if (useBanner && !useLagacyUI && module.banner.isNotEmpty()) {
                 val isDark = isSystemInDarkTheme()
-                val fadeColor = if (isDark) Color.Black else Color.White
+                val colorScheme = MaterialTheme.colorScheme
+                val context = LocalContext.current
+                val amoledMode = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+                    .getBoolean("amoled_mode", false)
+                val isDynamic = colorScheme.primary != colorScheme.secondary
+
+                val fadeColor = when {
+                    amoledMode && isDark -> Color.Black
+                    isDynamic -> colorScheme.surface
+                    isDark -> Color(0xFF222222)
+                    else -> Color.White
+                }
+
                 Box(
                     modifier = Modifier
                         .matchParentSize(),
