@@ -733,7 +733,7 @@ fun ModuleItem(
                                 Brush.verticalGradient(
                                     colors = listOf(
                                         fadeColor.copy(alpha = 0.0f),
-                                        fadeColor.copy(alpha = 0.9f)
+                                        fadeColor.copy(alpha = 0.8f)
                                     ),
                                     startY = 0f,
                                     endY = Float.POSITIVE_INFINITY
