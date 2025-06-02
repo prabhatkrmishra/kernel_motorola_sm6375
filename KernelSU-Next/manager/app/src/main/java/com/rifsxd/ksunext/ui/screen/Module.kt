@@ -594,9 +594,9 @@ private fun ModuleList(
                 else -> {
                     items(viewModel.moduleList) { module ->
                         val scope = rememberCoroutineScope()
-                        val updatedModule by produceState(initialValue = Triple("", "", "")) {
-                            scope.launch(Dispatchers.IO) {
-                                value = viewModel.checkUpdate(module)
+                        val updatedModule by produceState(key1 = module.id, initialValue = Triple("", "", "")) {
+                            value = withContext(Dispatchers.IO) {
+                                viewModel.checkUpdate(module)
                             }
                         }
 
