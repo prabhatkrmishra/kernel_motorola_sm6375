@@ -165,7 +165,9 @@ fun BackupRestoreScreen(navigator: DestinationsNavigator) {
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
             var useOverlayFs by rememberSaveable {
-                mutableStateOf(readMountSystemFile())
+                mutableStateOf(
+                    prefs.getBoolean("use_overlay_fs", false)
+                )
             }
 
             val moduleRestore = stringResource(id = R.string.module_restore)

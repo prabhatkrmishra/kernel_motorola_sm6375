@@ -224,11 +224,9 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             }
 
             var useOverlayFs by rememberSaveable {
-                mutableStateOf(readMountSystemFile())
-            }
-
-            LaunchedEffect(Unit) {
-                useOverlayFs = readMountSystemFile()
+                mutableStateOf(
+                    prefs.getBoolean("use_overlay_fs", false)
+                )
             }
 
             var showRebootDialog by remember { mutableStateOf(false) }
@@ -246,10 +244,8 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     useOverlayFs = it
                     if (useOverlayFs) {
                         moduleBackup()
-                        updateMountSystemFile(true)
                     } else {
                         moduleMigration()
-                        updateMountSystemFile(false)
                     }
                     if (isManager) install()
                     showRebootDialog = true
