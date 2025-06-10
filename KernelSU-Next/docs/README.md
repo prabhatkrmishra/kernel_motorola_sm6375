@@ -28,7 +28,7 @@ Currently, only the `arm64-v8a`, `armeabi-v7a` & `x86_64` architectures are supp
 
 ## Usage
 
-- [Installation instruction](https://ksunext.org/pages/installation.html)
+- [Installation instruction](https://kernelsu-next.github.io/webpage/pages/installation.html)
 
 ## Security
 
