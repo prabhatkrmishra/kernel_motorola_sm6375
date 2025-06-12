@@ -91,6 +91,11 @@ class SuperUserViewModel : ViewModel() {
         }
     }
 
+    fun updateAppProfile(packageName: String, newProfile: Natives.Profile) {
+        apps = apps.map {
+            if (it.packageName == packageName) it.copy(profile = newProfile) else it
+        }
+    }
 
     suspend fun fetchAppList() {
         isRefreshing = true
