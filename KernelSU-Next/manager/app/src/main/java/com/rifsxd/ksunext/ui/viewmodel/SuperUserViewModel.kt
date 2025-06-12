@@ -31,6 +31,7 @@ class SuperUserViewModel : ViewModel() {
     companion object {
         private const val TAG = "SuperUserViewModel"
         private var apps by mutableStateOf<List<AppInfo>>(emptyList())
+        private var profileOverrides by mutableStateOf<Map<String, Natives.Profile>>(emptyMap())
     }
 
     @Parcelize
@@ -68,8 +69,10 @@ class SuperUserViewModel : ViewModel() {
     private val sortedList by derivedStateOf {
         val comparator = compareBy<AppInfo> {
             when {
-                it.allowSu -> 0
-                it.hasCustomProfile -> 1
+                it.profile != null && it.profile.allowSu -> 0
+                it.profile != null && (
+                    if (it.profile.allowSu) !it.profile.rootUseDefault else !it.profile.nonRootUseDefault
+                ) -> 1
                 else -> 2
             }
         }.then(compareBy(Collator.getInstance(Locale.getDefault()), AppInfo::label))
@@ -79,7 +82,9 @@ class SuperUserViewModel : ViewModel() {
     }
 
     val appList by derivedStateOf {
-        sortedList.filter {
+        sortedList.map { app ->
+            profileOverrides[app.packageName]?.let { app.copy(profile = it) } ?: app
+        }.filter {
             it.label.contains(search, true) || it.packageName.contains(
                 search,
                 true
@@ -92,14 +97,13 @@ class SuperUserViewModel : ViewModel() {
     }
 
     fun updateAppProfile(packageName: String, newProfile: Natives.Profile) {
-        apps = apps.map {
-            if (it.packageName == packageName) it.copy(profile = newProfile) else it
+        profileOverrides = profileOverrides.toMutableMap().apply {
+            put(packageName, newProfile)
         }
     }
 
     suspend fun fetchAppList() {
         isRefreshing = true
-
 
         withContext(Dispatchers.IO) {
             withTimeoutOrNull(TIMEOUT_MILLIS) {
@@ -126,6 +130,7 @@ class SuperUserViewModel : ViewModel() {
                     profile = profile,
                 )
             }.filter { it.packageName != ksuApp.packageName }
+            profileOverrides = emptyMap()
             Log.i(TAG, "load cost: ${SystemClock.elapsedRealtime() - start}")
         }
     }

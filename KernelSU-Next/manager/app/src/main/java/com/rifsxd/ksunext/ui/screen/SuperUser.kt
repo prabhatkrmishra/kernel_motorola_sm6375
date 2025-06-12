@@ -54,12 +54,6 @@ fun SuperUserScreen(navigator: DestinationsNavigator) {
         }
     }
 
-    LaunchedEffect(viewModel.search) {
-        if (viewModel.search.isEmpty()) {
-            listState.scrollToItem(0)
-        }
-    }
-
     Scaffold(
         topBar = {
             SearchAppBar(
