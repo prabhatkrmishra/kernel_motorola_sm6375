@@ -37,15 +37,31 @@ private fun ksuDaemonOverlayfsPath(): String {
     return ksuApp.applicationInfo.nativeLibraryDir + File.separator + "libksud_overlayfs.so"
 }
 
+fun readMountSystemFile(): Boolean {
+    val shell = getRootShell()
+    val filePath = "/data/adb/ksu/mount_system"
+    val result = ShellUtils.fastCmd(shell, "cat $filePath").trim()
+    return result == "OVERLAYFS"
+}
+
 // Get the path based on the user's choice
 fun getKsuDaemonPath(): String {
-    val prefs = ksuApp.getSharedPreferences("settings", Context.MODE_PRIVATE)
-    val useOverlayFs = prefs.getBoolean("use_overlay_fs", false)
+    val useOverlayFs = readMountSystemFile()
     
     return if (useOverlayFs) {
         ksuDaemonOverlayfsPath()
     } else {
         ksuDaemonMagicPath()
+    }
+}
+
+fun updateMountSystemFile(useOverlayFs: Boolean) {
+    val shell = getRootShell()
+    val filePath = "/data/adb/ksu/mount_system"
+    if (useOverlayFs) {
+        ShellUtils.fastCmd(shell, "echo -n OVERLAYFS > $filePath")
+    } else {
+        ShellUtils.fastCmd(shell, "echo -n MAGIC_MOUNT > $filePath")
     }
 }
 
@@ -89,9 +105,9 @@ fun createRootShell(globalMnt: Boolean = false): Shell {
     val builder = Shell.Builder.create()
     return try {
         if (globalMnt) {
-            builder.build(getKsuDaemonPath(), "debug", "su", "-g")
+            builder.build(ksuDaemonMagicPath(), "debug", "su", "-g")
         } else {
-            builder.build(getKsuDaemonPath(), "debug", "su")
+            builder.build(ksuDaemonMagicPath(), "debug", "su")
         }
     } catch (e: Throwable) {
         Log.w(TAG, "ksu failed: ", e)
