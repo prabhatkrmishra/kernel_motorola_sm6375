@@ -9,6 +9,11 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -443,6 +448,8 @@ private fun ModuleList(
     val loadingDialog = rememberLoadingDialog()
     val confirmDialog = rememberConfirmDialog()
 
+    var expandedModuleId by rememberSaveable { mutableStateOf<String?>(null) }
+
     suspend fun onModuleUpdate(
         module: ModuleViewModel.ModuleInfo,
         changelogUrl: String,
@@ -665,6 +672,10 @@ private fun ModuleList(
                             },
                             onClick = {
                                 onClickModule(it.dirId, it.name, it.hasWebUi)
+                            },
+                            expanded = expandedModuleId == module.id,
+                            onExpandToggle = {
+                                expandedModuleId = if (expandedModuleId == module.id) null else module.id
                             }
                         )
 
@@ -690,6 +701,8 @@ fun ModuleItem(
     onCheckChanged: (Boolean) -> Unit,
     onUpdate: (ModuleViewModel.ModuleInfo) -> Unit,
     onClick: (ModuleViewModel.ModuleInfo) -> Unit,
+    expanded: Boolean,
+    onExpandToggle: () -> Unit,
 ) {
     val viewModel = viewModel<ModuleViewModel>()
 
@@ -698,12 +711,7 @@ fun ModuleItem(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable(
-                enabled = (module.enabled && !module.remove && (module.hasWebUi)),
-                onClick = {
-                    if (module.hasWebUi) {
-                        onClick(module)
-                    }
-                }
+                onClick = onExpandToggle
             )
     ) {
         Box(
@@ -866,6 +874,15 @@ fun ModuleItem(
                                             )
                                         )
                                     }
+                                    if (module.hasActionScript) {
+                                        LabelItem(
+                                            text = stringResource(R.string.action),
+                                            style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
+                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                                            )
+                                        )
+                                    }
                                 }
                             }
 
@@ -945,76 +962,142 @@ fun ModuleItem(
                         maxLines = 4
                     )
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
 
-                    Row(
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                    if (expanded) {
+                        Spacer(modifier = Modifier.height(10.dp))
+                    }
+
+                    AnimatedVisibility(
+                        visible = expanded,
+                        enter = fadeIn() + expandVertically(),
+                        exit = shrinkVertically() + fadeOut()
                     ) {
-                        if (module.hasActionScript) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                enabled = !module.remove && module.enabled,
-                                onClick = {
-                                    navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
-                                    viewModel.markNeedRefresh()
-                                },
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Terminal,
-                                    contentDescription = null
-                                )
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            if (module.hasActionScript) {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    enabled = !module.remove && module.enabled,
+                                    onClick = {
+                                        navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
+                                        viewModel.markNeedRefresh()
+                                    },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Terminal,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasWebUi && updateUrl.isEmpty()) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            text = stringResource(R.string.action),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.weight(0.1f, true))
                             }
 
-                            Spacer(modifier = Modifier.weight(0.1f, true))
-                        }
-
-                        Spacer(modifier = Modifier.weight(1f, true))
-
-                        if (updateUrl.isNotEmpty()) {
-                            Button(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                enabled = !module.remove,
-                                onClick = { onUpdate(module) },
-                                shape = ButtonDefaults.textShape,
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Download,
-                                    contentDescription = null
-                                )
+                            if (module.hasWebUi) {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    enabled = !module.remove && module.enabled,
+                                    onClick = { onClick(module) },
+                                    interactionSource = interactionSource,
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasActionScript && updateUrl.isEmpty()) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                            text = stringResource(R.string.open)
+                                        )
+                                    }
+                                }
                             }
 
-                            Spacer(modifier = Modifier.weight(0.1f, true))
-                        }
+                            Spacer(modifier = Modifier.weight(1f, true))
 
-                        if (module.remove) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                onClick = { onRestore(module) },
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Restore,
-                                    contentDescription = null
-                                )
+                            if (updateUrl.isNotEmpty()) {
+                                Button(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    enabled = !module.remove,
+                                    onClick = { onUpdate(module) },
+                                    shape = ButtonDefaults.textShape,
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Download,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasActionScript || !module.hasWebUi) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                            text = stringResource(R.string.module_update)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.weight(0.1f, true))
                             }
-                        } else {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                enabled = true,
-                                onClick = { onUninstall(module) },
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.Delete,
-                                    contentDescription = null
-                                )
+
+                            if (module.remove) {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    onClick = { onRestore(module) },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Restore,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                            text = stringResource(R.string.restore)
+                                        )
+                                    }
+                                }
+                            } else {
+                                FilledTonalButton(
+                                    modifier = Modifier.defaultMinSize(52.dp, 32.dp),
+                                    enabled = true,
+                                    onClick = { onUninstall(module) },
+                                    contentPadding = ButtonDefaults.TextButtonContentPadding
+                                ) {
+                                    Icon(
+                                        modifier = Modifier.size(20.dp),
+                                        imageVector = Icons.Outlined.Delete,
+                                        contentDescription = null
+                                    )
+                                    if (!module.hasActionScript && !module.hasWebUi && updateUrl.isEmpty()) {
+                                        Text(
+                                            modifier = Modifier.padding(start = 7.dp),
+                                            fontFamily = MaterialTheme.typography.labelMedium.fontFamily,
+                                            fontSize = MaterialTheme.typography.labelMedium.fontSize,
+                                            text = stringResource(R.string.uninstall)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -1056,5 +1139,5 @@ fun ModuleItemPreview() {
         size = 12345678L,
         banner = ""
     )
-    ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {}, {})
+    ModuleItem(EmptyDestinationsNavigator, module, "", {}, {}, {}, {}, {}, false, {})
 }
