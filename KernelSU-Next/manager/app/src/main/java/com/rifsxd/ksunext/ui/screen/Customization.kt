@@ -90,28 +90,12 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
 
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
-            var useLagacyUI by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("use_legacyui", false)
-                )
-            }
-            SwitchItem(
-                icon = Icons.Filled.Dashboard,
-                title = stringResource(id = R.string.settings_legacyui),
-                summary = stringResource(id = R.string.settings_legacyui_summary),
-                checked = useLagacyUI
-            ) {
-                prefs.edit().putBoolean("use_legacyui", it).apply()
-                useLagacyUI = it
-            }
-
             var useBanner by rememberSaveable {
                 mutableStateOf(
                     prefs.getBoolean("use_banner", true)
                 )
             }
             SwitchItem(
-                enabled = !useLagacyUI,
                 icon = Icons.Filled.ViewCarousel,
                 title = stringResource(id = R.string.settings_banner),
                 summary = stringResource(id = R.string.settings_banner_summary),

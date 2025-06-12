@@ -84,7 +84,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -699,13 +698,10 @@ fun ModuleItem(
             .fillMaxWidth()
             .clip(MaterialTheme.shapes.medium)
             .clickable(
-                enabled = (module.enabled && !module.remove && (module.hasWebUi || module.hasActionScript)),
+                enabled = (module.enabled && !module.remove && (module.hasWebUi)),
                 onClick = {
                     if (module.hasWebUi) {
                         onClick(module)
-                    } else if (module.hasActionScript) {
-                        navigator.navigate(ExecuteModuleActionScreenDestination(module.dirId))
-                        viewModel.markNeedRefresh()
                     }
                 }
             )
@@ -716,7 +712,6 @@ fun ModuleItem(
         ) {
             val context = LocalContext.current
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
-            val useLagacyUI = prefs.getBoolean("use_legacyui", false)
 
             val useBanner = prefs.getBoolean("use_banner", true)
 
@@ -791,7 +786,6 @@ fun ModuleItem(
                 }
             }
             Column {
-                val textDecoration = if (!module.remove) null else TextDecoration.LineThrough
                 val interactionSource = remember { MutableInteractionSource() }
 
                 var developerOptionsEnabled by rememberSaveable {
@@ -833,19 +827,9 @@ fun ModuleItem(
                                         contentColor = MaterialTheme.colorScheme.onSecondaryContainer
                                     )
                                 )
-                                LabelItem(
-                                    text = if (module.enabled) stringResource(R.string.enabled) else stringResource(R.string.disabled),
-                                    style = if (module.enabled)
-                                        com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy()
-                                    else
-                                        com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                            containerColor = MaterialTheme.colorScheme.errorContainer,
-                                            contentColor = MaterialTheme.colorScheme.onErrorContainer
-                                        )
-                                )
                                 if (module.remove) {
                                     LabelItem(
-                                        text = stringResource(R.string.uninstalled),
+                                        text = stringResource(R.string.uninstall),
                                         style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
                                             containerColor = MaterialTheme.colorScheme.errorContainer,
                                             contentColor = MaterialTheme.colorScheme.onErrorContainer
@@ -882,15 +866,6 @@ fun ModuleItem(
                                             )
                                         )
                                     }
-                                    if (module.hasActionScript) {
-                                        LabelItem(
-                                            text = stringResource(R.string.action),
-                                            style = com.dergoogler.mmrl.ui.component.LabelItemDefaults.style.copy(
-                                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                                            )
-                                        )
-                                    }
                                 }
                             }
 
@@ -901,24 +876,21 @@ fun ModuleItem(
                                 fontSize = MaterialTheme.typography.titleMedium.fontSize,
                                 fontWeight = FontWeight.SemiBold,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.titleMedium.fontFamily,
-                                textDecoration = textDecoration,
+                                fontFamily = MaterialTheme.typography.titleMedium.fontFamily
                             )
 
                             Text(
                                 text = "$moduleVersion: ${module.version}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                textDecoration = textDecoration
+                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                             )
 
                             Text(
                                 text = "$moduleAuthor: ${module.author}",
                                 fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                 lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                textDecoration = textDecoration
+                                fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                             )
 
                             if (developerOptionsEnabled) {
@@ -927,24 +899,21 @@ fun ModuleItem(
                                     text = "$moduleId: ${module.id}",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    textDecoration = textDecoration
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                                 )
 
                                 Text(
                                     text = "$moduleVersionCode: ${module.versionCode}",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    textDecoration = textDecoration
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                                 )
 
                                 Text(
                                     text = if (module.updateJson.isNotEmpty()) "$moduleUpdateJson: ${module.updateJson}" else "$moduleUpdateJson: $moduleUpdateJsonEmpty",
                                     fontSize = MaterialTheme.typography.bodySmall.fontSize,
                                     lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
-                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily,
-                                    textDecoration = textDecoration
+                                    fontFamily = MaterialTheme.typography.bodySmall.fontFamily
                                 )
                             }
                         }
@@ -973,13 +942,8 @@ fun ModuleItem(
                         lineHeight = MaterialTheme.typography.bodySmall.lineHeight,
                         fontWeight = MaterialTheme.typography.bodySmall.fontWeight,
                         overflow = TextOverflow.Ellipsis,
-                        maxLines = 4,
-                        textDecoration = textDecoration
+                        maxLines = 4
                     )
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    HorizontalDivider(thickness = Dp.Hairline)
 
                     Spacer(modifier = Modifier.height(12.dp))
 
@@ -999,28 +963,12 @@ fun ModuleItem(
                             ) {
                                 Icon(
                                     modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.Outlined.PlayArrow,
+                                    imageVector = Icons.Outlined.Terminal,
                                     contentDescription = null
                                 )
                             }
 
                             Spacer(modifier = Modifier.weight(0.1f, true))
-                        }
-
-                        if (module.hasWebUi) {
-                            FilledTonalButton(
-                                modifier = Modifier.defaultMinSize(52.dp, 32.dp),
-                                enabled = !module.remove && module.enabled,
-                                onClick = { onClick(module) },
-                                interactionSource = interactionSource,
-                                contentPadding = ButtonDefaults.TextButtonContentPadding
-                            ) {
-                                Icon(
-                                    modifier = Modifier.size(20.dp),
-                                    imageVector = Icons.AutoMirrored.Outlined.Wysiwyg,
-                                    contentDescription = null
-                                )
-                            }
                         }
 
                         Spacer(modifier = Modifier.weight(1f, true))
