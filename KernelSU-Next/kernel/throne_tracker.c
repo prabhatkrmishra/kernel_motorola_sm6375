@@ -14,13 +14,9 @@
 #include "throne_tracker.h"
 #include "kernel_compat.h"
 
-#include <linux/kthread.h>
-#include <linux/sched.h>
-
 uid_t ksu_manager_uid = KSU_INVALID_UID;
 
-static struct task_struct *throne_thread;
-#define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list"
+#define SYSTEM_PACKAGES_LIST_PATH "/data/system/packages.list.tmp"
 
 struct uid_data {
 	struct list_head list;
@@ -324,7 +320,7 @@ static bool is_uid_exist(uid_t uid, char *package, void *data)
 	return exist;
 }
 
-static void track_throne_function()
+void track_throne()
 {
 	struct file *fp =
 		ksu_filp_open_compat(SYSTEM_PACKAGES_LIST_PATH, O_RDONLY, 0);
@@ -416,23 +412,6 @@ out:
 	list_for_each_entry_safe (np, n, &uid_list, list) {
 		list_del(&np->list);
 		kfree(np);
-	}
-}
-
-static int throne_tracker_thread(void *data)
-{
-	pr_info("%s: pid: %d started\n", __func__, current->pid);
-	track_throne_function();
-	throne_thread = NULL;
-	pr_info("%s: pid: %d exit!\n", __func__, current->pid);
-	return 0;
-}
-
-void track_throne()
-{
-	throne_thread = kthread_run(throne_tracker_thread, NULL, "throne_tracker");
-	if (IS_ERR(throne_thread)) {
-		throne_thread = NULL;
 	}
 }
 
