@@ -1,5 +1,7 @@
 package com.rifsxd.ksunext.ui
 
+import android.content.Intent
+import android.net.Uri
 import android.content.Context
 import android.os.Build
 import android.os.Bundle
@@ -54,9 +56,7 @@ import com.rifsxd.ksunext.ui.theme.KernelSUTheme
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import com.rifsxd.ksunext.ui.util.install
-
-import android.content.Intent
-import android.net.Uri
+import com.rifsxd.ksunext.ui.util.isSuCompatDisabled
 import com.rifsxd.ksunext.ui.screen.FlashIt
 
 class MainActivity : ComponentActivity() {
@@ -167,39 +167,48 @@ private fun BottomBar(navController: NavHostController) {
     val navigator = navController.rememberDestinationsNavigator()
     val isManager = Natives.becomeManager(ksuApp.packageName)
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
+    val suCompatDisabled = isSuCompatDisabled()
+
     NavigationBar(
         tonalElevation = 8.dp,
         windowInsets = WindowInsets.systemBars.union(WindowInsets.displayCutout).only(
             WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom
         )
     ) {
-        BottomBarDestination.entries.forEach { destination ->
-            if (!fullFeatured && destination.rootRequired) return@forEach
-            val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
-            NavigationBarItem(
-                selected = isCurrentDestOnBackStack,
-                onClick = {
-                    if (isCurrentDestOnBackStack) {
-                        navigator.popBackStack(destination.direction, false)
-                    }
-                    navigator.navigate(destination.direction) {
-                        popUpTo(NavGraphs.root) {
-                            saveState = true
+        BottomBarDestination.entries
+            .filter {
+                // Hide SuperUser and Module when su compat is enabled
+                if (suCompatDisabled) {
+                    it != BottomBarDestination.SuperUser && it != BottomBarDestination.Module
+                } else true
+            }
+            .forEach { destination ->
+                if (!fullFeatured && destination.rootRequired) return@forEach
+                val isCurrentDestOnBackStack by navController.isRouteOnBackStackAsState(destination.direction)
+                NavigationBarItem(
+                    selected = isCurrentDestOnBackStack,
+                    onClick = {
+                        if (isCurrentDestOnBackStack) {
+                            navigator.popBackStack(destination.direction, false)
                         }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                icon = {
-                    if (isCurrentDestOnBackStack) {
-                        Icon(destination.iconSelected, stringResource(destination.label))
-                    } else {
-                        Icon(destination.iconNotSelected, stringResource(destination.label))
-                    }
-                },
-                label = { Text(stringResource(destination.label)) },
-                alwaysShowLabel = true
-            )
-        }
+                        navigator.navigate(destination.direction) {
+                            popUpTo(NavGraphs.root) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
+                    icon = {
+                        if (isCurrentDestOnBackStack) {
+                            Icon(destination.iconSelected, stringResource(destination.label))
+                        } else {
+                            Icon(destination.iconNotSelected, stringResource(destination.label))
+                        }
+                    },
+                    label = { Text(stringResource(destination.label)) },
+                    alwaysShowLabel = true
+                )
+            }
     }
 }

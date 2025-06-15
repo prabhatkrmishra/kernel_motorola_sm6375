@@ -221,4 +221,5 @@
     <string name="use_webuix_eruda_summary">Inject a debug console into WebUI X to make debugging easier. Requires web debugging to be on.</string>
     <string name="customization">Customization</string>
     <string name="developer">Developer</string>
+    <string name="sucompat_disabled">SUCOMPAT DISABLED</string>
 </resources>

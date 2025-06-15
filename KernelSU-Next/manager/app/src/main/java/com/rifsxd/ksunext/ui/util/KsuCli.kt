@@ -628,6 +628,10 @@ fun getModuleSize(dir: File): Long {
     return result.toLongOrNull() ?: 0L
 }
 
+fun isSuCompatDisabled(): Boolean {
+    return Natives.version >= Natives.MINIMAL_SUPPORTED_SU_COMPAT && !Natives.isSuEnabled()
+}
+
 fun setAppProfileTemplate(id: String, template: String): Boolean {
     val shell = getRootShell()
     val escapedTemplate = template.replace("\"", "\\\"")

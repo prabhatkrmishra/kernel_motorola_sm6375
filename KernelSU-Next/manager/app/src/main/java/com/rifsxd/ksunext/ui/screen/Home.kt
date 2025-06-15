@@ -322,25 +322,49 @@ private fun StatusCard(
                         val labelStyle = LabelItemDefaults.style
                         TextRow(
                             trailingContent = {
-                                LabelItem(
-                                    icon = if (Natives.isSafeMode) {
-                                        {
-                                            Icon(
-                                                tint = labelStyle.contentColor,
-                                                imageVector = Icons.Filled.Security,
-                                                contentDescription = null
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    LabelItem(
+                                        icon = if (Natives.isSafeMode) {
+                                            {
+                                                Icon(
+                                                    tint = labelStyle.contentColor,
+                                                    imageVector = Icons.Filled.Security,
+                                                    contentDescription = null
+                                                )
+                                            }
+                                        } else {
+                                            null
+                                        },
+                                        text = {
+                                            Text(
+                                                text = workingMode,
+                                                style = labelStyle.textStyle.copy(color = labelStyle.contentColor),
                                             )
                                         }
-                                    } else {
-                                        null
-                                    },
-                                    text = {
-                                        Text(
-                                            text = workingMode,
-                                            style = labelStyle.textStyle.copy(color = labelStyle.contentColor),
+                                    )
+                                    if (isSuCompatDisabled()) {
+                                        LabelItem(
+                                            icon = {
+                                                Icon(
+                                                    tint = labelStyle.contentColor,
+                                                    imageVector = Icons.Filled.Warning,
+                                                    contentDescription = null
+                                                )
+                                            },
+                                            text = {
+                                                Text(
+                                                    text = stringResource(R.string.sucompat_disabled),
+                                                    style = labelStyle.textStyle.copy(
+                                                        color = labelStyle.contentColor,
+                                                    )
+                                                )
+                                            }
                                         )
                                     }
-                                )
+                                }
                             }
                         ) {
                             Text(
