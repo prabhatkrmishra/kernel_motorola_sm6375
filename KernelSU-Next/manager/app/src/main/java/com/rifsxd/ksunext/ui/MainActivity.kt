@@ -55,6 +55,10 @@ import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import com.rifsxd.ksunext.ui.util.install
 
+import android.content.Intent
+import android.net.Uri
+import com.rifsxd.ksunext.ui.screen.FlashIt
+
 class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +74,14 @@ class MainActivity : ComponentActivity() {
         val isManager = Natives.becomeManager(ksuApp.packageName)
         if (isManager) install()
 
+        // Check if launched with a ZIP file
+        val zipUri: Uri? = when (intent?.action) {
+            Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
+                intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
+            }
+            else -> null
+        }?.takeIf { it.toString().endsWith(".zip", ignoreCase = true) }
+
         setContent {
             // Read AMOLED mode preference
             val prefs = getSharedPreferences("settings", Context.MODE_PRIVATE)
@@ -81,6 +93,18 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 val snackBarHostState = remember { SnackbarHostState() }
                 val currentDestination = navController.currentBackStackEntryAsState()?.value?.destination
+
+                val navigator = navController.rememberDestinationsNavigator()
+
+                LaunchedEffect(zipUri) {
+                    if (zipUri != null) {
+                        navigator.navigate(
+                            FlashScreenDestination(
+                                FlashIt.FlashModules(listOf(zipUri))
+                            )
+                        )
+                    }
+                }
 
                 val showBottomBar = when (currentDestination?.route) {
                     FlashScreenDestination.route -> false // Hide for FlashScreenDestination
