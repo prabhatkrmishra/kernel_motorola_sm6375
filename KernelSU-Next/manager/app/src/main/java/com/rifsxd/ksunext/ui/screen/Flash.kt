@@ -143,6 +143,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
     val confirmDialog = rememberConfirmDialog()
     var confirmed by rememberSaveable { mutableStateOf(flashIt !is FlashIt.FlashModules) }
     var pendingFlashIt by rememberSaveable { mutableStateOf<FlashIt?>(null) }
+    var hasFlashed by rememberSaveable { mutableStateOf(false) }
 
     LaunchedEffect(flashIt) {
         if (flashIt is FlashIt.FlashModules && !confirmed) {
@@ -172,7 +173,8 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
     }
 
     LaunchedEffect(confirmed, pendingFlashIt) {
-        if (!confirmed || pendingFlashIt == null || text.isNotEmpty()) return@LaunchedEffect
+        if (!confirmed || pendingFlashIt == null || text.isNotEmpty() || hasFlashed) return@LaunchedEffect
+        hasFlashed = true
         withContext(Dispatchers.IO) {
             flashIt(pendingFlashIt!!, onStdout = {
                 tempText = "$it\n"
