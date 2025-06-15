@@ -67,6 +67,7 @@ import com.ramcosta.composedestinations.generated.destinations.AppProfileTemplat
 import com.ramcosta.composedestinations.generated.destinations.FlashScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.BackupRestoreScreenDestination
 import com.ramcosta.composedestinations.generated.destinations.CustomizationScreenDestination
+import com.ramcosta.composedestinations.generated.destinations.DeveloperScreenDestination
 import com.ramcosta.composedestinations.navigation.DestinationsNavigator
 import com.ramcosta.composedestinations.navigation.EmptyDestinationsNavigator
 import kotlinx.coroutines.Dispatchers
@@ -293,78 +294,6 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                 checkUpdate = it
             }
 
-            var enableWebDebugging by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("enable_web_debugging", false)
-                )
-            }
-
-            if (ksuVersion != null) {
-                SwitchItem(
-                    icon = Icons.Filled.Web,
-                    title = stringResource(id = R.string.enable_web_debugging),
-                    summary = stringResource(id = R.string.enable_web_debugging_summary),
-                    checked = enableWebDebugging
-                ) {
-                    prefs.edit().putBoolean("enable_web_debugging", it).apply()
-                    enableWebDebugging = it
-                }
-            }
-
-            var developerOptionsEnabled by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("enable_developer_options", false)
-                )
-            }
-            if (ksuVersion != null) {
-                SwitchItem(
-                    icon = Icons.Filled.DeveloperMode,
-                    title = stringResource(id = R.string.enable_developer_options),
-                    summary = stringResource(id = R.string.enable_developer_options_summary),
-                    checked = developerOptionsEnabled
-                ) {
-                    prefs.edit().putBoolean("enable_developer_options", it).apply()
-                    developerOptionsEnabled = it
-                }
-            }
-
-            var useWebUIX by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("use_webuix", true)
-                )
-            }
-            if (ksuVersion != null) {
-                SwitchItem(
-                    beta = false,
-                    enabled = Platform.isAlive,
-                    icon = Icons.Filled.WebAsset,
-                    title = stringResource(id = R.string.use_webuix),
-                    summary = stringResource(id = R.string.use_webuix_summary),
-                    checked = useWebUIX
-                ) {
-                    prefs.edit().putBoolean("use_webuix", it).apply()
-                    useWebUIX = it
-                }
-            }
-            var useWebUIXEruda by rememberSaveable {
-                mutableStateOf(
-                    prefs.getBoolean("use_webuix_eruda", false)
-                )
-            }
-            if (ksuVersion != null) {
-                SwitchItem(
-                    beta = false,
-                    enabled = Platform.isAlive && useWebUIX && enableWebDebugging,
-                    icon = Icons.Filled.FormatListNumbered,
-                    title = stringResource(id = R.string.use_webuix_eruda),
-                    summary = stringResource(id = R.string.use_webuix_eruda_summary),
-                    checked = useWebUIXEruda
-                ) {
-                    prefs.edit().putBoolean("use_webuix_eruda", it).apply()
-                    useWebUIXEruda = it
-                }
-            }
-
             if (isOverlayAvailable && useOverlayFs) {
                 val shrink = stringResource(id = R.string.shrink_sparse_image)
                 val shrinkMessage = stringResource(id = R.string.shrink_sparse_image_message)
@@ -418,6 +347,20 @@ fun SettingScreen(navigator: DestinationsNavigator) {
                     }
                 )
             }
+
+            val developer = stringResource(id = R.string.developer)
+            ListItem(
+                leadingContent = {
+                    Icon(
+                        Icons.Filled.DeveloperBoard,
+                        developer
+                    )
+                },
+                headlineContent = { Text(developer) },
+                modifier = Modifier.clickable {
+                    navigator.navigate(DeveloperScreenDestination)
+                }
+            )
 
             val lkmMode = Natives.version >= Natives.MINIMAL_SUPPORTED_KERNEL_LKM && Natives.isLkmMode
             if (lkmMode) {
