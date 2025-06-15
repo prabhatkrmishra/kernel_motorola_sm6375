@@ -74,13 +74,29 @@ class MainActivity : ComponentActivity() {
         val isManager = Natives.becomeManager(ksuApp.packageName)
         if (isManager) install()
 
-        // Check if launched with a ZIP file
         val zipUri: Uri? = when (intent?.action) {
             Intent.ACTION_VIEW, Intent.ACTION_SEND -> {
-                intent.data ?: intent.getParcelableExtra(Intent.EXTRA_STREAM)
+                val uri = intent.data ?: intent.getParcelableExtra<Uri>(Intent.EXTRA_STREAM)
+                uri?.let {
+                    val name = when (it.scheme) {
+                        "file" -> it.lastPathSegment ?: ""
+                        "content" -> {
+                            contentResolver.query(it, null, null, null, null)?.use { cursor ->
+                                val nameIndex = cursor.getColumnIndex(android.provider.OpenableColumns.DISPLAY_NAME)
+                                if (cursor.moveToFirst() && nameIndex != -1) {
+                                    cursor.getString(nameIndex)
+                                } else {
+                                    it.lastPathSegment ?: ""
+                                }
+                            } ?: (it.lastPathSegment ?: "")
+                        }
+                        else -> it.lastPathSegment ?: ""
+                    }
+                    if (name.lowercase().endsWith(".zip")) it else null
+                }
             }
             else -> null
-        }?.takeIf { it.toString().endsWith(".zip", ignoreCase = true) }
+        }
 
         setContent {
             // Read AMOLED mode preference
