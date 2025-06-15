@@ -79,10 +79,19 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+import androidx.compose.ui.platform.LocalContext
+import android.app.Activity
+
 enum class FlashingStatus {
     FLASHING,
     SUCCESS,
     FAILED
+}
+
+fun Context.findActivity(): Activity? = when (this) {
+    is Activity -> this
+    is android.content.ContextWrapper -> baseContext.findActivity()
+    else -> null
 }
 
 // Lets you flash modules sequentially when mutiple zipUris are selected
@@ -108,7 +117,11 @@ fun flashModulesSequentially(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 @Destination<RootGraph>
-fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
+fun FlashScreen(
+    navigator: DestinationsNavigator,
+    flashIt: FlashIt,
+    finishIntent: Boolean = false
+) {
 
     var text by rememberSaveable { mutableStateOf("") }
     var tempText: String
@@ -128,6 +141,8 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
     val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
     val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
 
+    val activity = context.findActivity()
+
     val view = LocalView.current
     DisposableEffect(flashing) {
         view.keepScreenOn = flashing == FlashingStatus.FLASHING
@@ -136,8 +151,9 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
         }
     }
 
-    BackHandler(enabled = flashing == FlashingStatus.FLASHING) {
-        // Disable back button if flashing is running
+    BackHandler(enabled = flashing != FlashingStatus.FLASHING) {
+        navigator.popBackStack()
+        if (finishIntent) activity?.finish()
     }
 
     val confirmDialog = rememberConfirmDialog()
@@ -165,6 +181,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
             } else {
                 // User cancelled, go back
                 navigator.popBackStack()
+                if (finishIntent) activity?.finish()
             }
         } else {
             confirmed = true
@@ -205,6 +222,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
                 flashing,
                 onBack = dropUnlessResumed {
                     navigator.popBackStack()
+                    if (finishIntent) activity?.finish()
                 },
                 onSave = {
                     scope.launch {
@@ -244,6 +262,7 @@ fun FlashScreen(navigator: DestinationsNavigator, flashIt: FlashIt) {
                     icon = { Icon(Icons.Filled.Close, contentDescription = null) },
                     onClick = {
                         navigator.popBackStack()
+                        if (finishIntent) activity?.finish()
                     }
                 )
             }

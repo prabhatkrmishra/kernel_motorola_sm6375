@@ -116,7 +116,8 @@ class MainActivity : ComponentActivity() {
                     if (zipUri != null) {
                         navigator.navigate(
                             FlashScreenDestination(
-                                FlashIt.FlashModules(listOf(zipUri))
+                                FlashIt.FlashModules(listOf(zipUri)),
+                                finishIntent = true
                             )
                         )
                     }
