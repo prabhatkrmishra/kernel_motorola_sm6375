@@ -53,6 +53,7 @@ import com.rifsxd.ksunext.Natives
 import com.rifsxd.ksunext.ksuApp
 import com.rifsxd.ksunext.ui.screen.BottomBarDestination
 import com.rifsxd.ksunext.ui.theme.KernelSUTheme
+import com.rifsxd.ksunext.ui.util.*
 import com.rifsxd.ksunext.ui.util.LocalSnackbarHost
 import com.rifsxd.ksunext.ui.util.rootAvailable
 import com.rifsxd.ksunext.ui.util.install
@@ -168,6 +169,8 @@ private fun BottomBar(navController: NavHostController) {
     val isManager = Natives.becomeManager(ksuApp.packageName)
     val fullFeatured = isManager && !Natives.requireNewKernel() && rootAvailable()
     val suCompatDisabled = isSuCompatDisabled()
+    val suSFS = getSuSFS()
+    val susSUMode = susfsSUS_SU_Mode()
 
     NavigationBar(
         tonalElevation = 8.dp,
@@ -177,9 +180,14 @@ private fun BottomBar(navController: NavHostController) {
     ) {
         BottomBarDestination.entries
             .filter {
-                // Hide SuperUser and Module when su compat is enabled
+                // Hide SuperUser and Module when su compat is disabled
                 if (suCompatDisabled) {
-                    it != BottomBarDestination.SuperUser && it != BottomBarDestination.Module
+                    if (suSFS == "Supported" && susSUMode == "2") {
+                        true
+                    } else {
+                        // hide SuperUser and Module
+                        it != BottomBarDestination.SuperUser && it != BottomBarDestination.Module
+                    }
                 } else true
             }
             .forEach { destination ->
