@@ -424,14 +424,6 @@ private fun StatusCard(
                             text = stringResource(R.string.home_module_count, getModuleCount()),
                             style = MaterialTheme.typography.bodyMedium
                         )
-
-                        val suSFS = getSuSFS()
-                        if (suSFS == "Supported") {
-                            Text(
-                                text = "SuSFS: " + stringResource(R.string.susfs_supported),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
                     }
                 }
 
@@ -583,7 +575,7 @@ private fun InfoCard(autoExpand: Boolean = false) {
                         Spacer(Modifier.height(16.dp))
                         InfoCardItem(
                             label = stringResource(R.string.home_susfs_version),
-                            content = "${getSuSFSVersion()} (${getSuSFSVariant()}) $susSUMode",
+                            content = "${stringResource(R.string.susfs_supported)} | ${getSuSFSVersion()} (${getSuSFSVariant()}) $susSUMode",
                             icon = painterResource(R.drawable.ic_sus),
                         )
                     }
