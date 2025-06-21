@@ -1012,7 +1012,7 @@ fun ModuleItem(
 
                             Spacer(modifier = Modifier.weight(1f, true))
 
-                            if (updateUrl.isNotEmpty()) {
+                            if (updateUrl.isNotEmpty() && !module.remove && !module.update) {
                                 Button(
                                     modifier = Modifier.defaultMinSize(52.dp, 32.dp),
                                     enabled = !module.remove,

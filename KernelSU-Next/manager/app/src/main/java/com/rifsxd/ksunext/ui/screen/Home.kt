@@ -111,11 +111,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
                 }
             }
 
-            val moduleUpdateCount = moduleViewModel.moduleList.count { 
-                moduleViewModel.checkUpdate(it).first.isNotEmpty()
-            }
-
-            StatusCard(kernelVersion, ksuVersion, lkmMode, moduleUpdateCount) {
+            StatusCard(kernelVersion, ksuVersion, lkmMode) {
                 navigator.navigate(InstallScreenDestination)
             }
             if (isManager && Natives.requireNewKernel()) {
@@ -428,14 +424,6 @@ private fun StatusCard(
                             text = stringResource(R.string.home_module_count, getModuleCount()),
                             style = MaterialTheme.typography.bodyMedium
                         )
-
-                        if (moduleUpdateCount > 0) {
-                            Text(
-                                text = stringResource(R.string.home_module_update_count, moduleUpdateCount),
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.primary
-                            )
-                        }
 
                         val suSFS = getSuSFS()
                         if (suSFS == "Supported") {
