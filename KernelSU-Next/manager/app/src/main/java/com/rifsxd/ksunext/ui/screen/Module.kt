@@ -1089,6 +1089,7 @@ fun ModuleItem(
 }
 
 fun formatSize(size: Long): String {
+    if (size == 0L) return "null"
     val kb = 1024
     val mb = kb * 1024
     val gb = mb * 1024
