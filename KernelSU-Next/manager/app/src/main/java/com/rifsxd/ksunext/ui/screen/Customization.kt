@@ -95,14 +95,16 @@ fun CustomizationScreen(navigator: DestinationsNavigator) {
                     prefs.getBoolean("use_banner", true)
                 )
             }
-            SwitchItem(
-                icon = Icons.Filled.ViewCarousel,
-                title = stringResource(id = R.string.settings_banner),
-                summary = stringResource(id = R.string.settings_banner_summary),
-                checked = useBanner
-            ) {
-                prefs.edit().putBoolean("use_banner", it).apply()
-                useBanner = it
+            if (ksuVersion != null) {
+                SwitchItem(
+                    icon = Icons.Filled.ViewCarousel,
+                    title = stringResource(id = R.string.settings_banner),
+                    summary = stringResource(id = R.string.settings_banner_summary),
+                    checked = useBanner
+                ) {
+                    prefs.edit().putBoolean("use_banner", it).apply()
+                    useBanner = it
+                }
             }
 
             var enableAmoled by rememberSaveable {
