@@ -5,11 +5,11 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::process::Stdio;
 
-use anyhow::Context;
-use anyhow::Result;
 use anyhow::anyhow;
 use anyhow::bail;
 use anyhow::ensure;
+use anyhow::Context;
+use anyhow::Result;
 use regex_lite::Regex;
 use which::which;
 
@@ -97,7 +97,7 @@ pub fn get_current_kmi() -> Result<String> {
 }
 
 fn parse_kmi_from_kernel(kernel: &PathBuf, workdir: &Path) -> Result<String> {
-    use std::fs::{File, copy};
+    use std::fs::{copy, File};
     use std::io::{BufReader, Read};
     let kernel_path = workdir.join("kernel");
     copy(kernel, &kernel_path).context("Failed to copy kernel")?;
@@ -200,11 +200,7 @@ fn is_magisk_patched_vendor(magiskboot: &Path, workdir: &Path) -> Result<bool> {
         .current_dir(workdir)
         .stdout(Stdio::null())
         .stderr(Stdio::null())
-        .args([
-            "cpio",
-            vendor_ramdisk_cpio.to_str().unwrap(),
-            "test",
-        ])
+        .args(["cpio", vendor_ramdisk_cpio.to_str().unwrap(), "test"])
         .status()?;
 
     // 0: stock, 1: magisk

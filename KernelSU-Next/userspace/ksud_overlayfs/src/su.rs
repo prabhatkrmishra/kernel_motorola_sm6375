@@ -14,7 +14,7 @@ use crate::{
 #[cfg(any(target_os = "linux", target_os = "android"))]
 use rustix::{
     process::getuid,
-    thread::{Gid, Uid, set_thread_res_gid, set_thread_res_uid},
+    thread::{set_thread_res_gid, set_thread_res_uid, Gid, Uid},
 };
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
