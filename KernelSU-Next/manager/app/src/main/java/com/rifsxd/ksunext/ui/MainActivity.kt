@@ -63,6 +63,7 @@ import com.rifsxd.ksunext.ui.util.install
 import com.rifsxd.ksunext.ui.util.isSuCompatDisabled
 import com.rifsxd.ksunext.ui.screen.FlashIt
 import com.rifsxd.ksunext.ui.viewmodel.ModuleViewModel
+import com.rifsxd.ksunext.ui.webui.initPlatform
 
 class MainActivity : ComponentActivity() {
 
@@ -137,6 +138,11 @@ class MainActivity : ComponentActivity() {
                     FlashScreenDestination.route -> false // Hide for FlashScreenDestination
                     ExecuteModuleActionScreenDestination.route -> false // Hide for ExecuteModuleActionScreen
                     else -> true
+                }
+
+                // pre-init platform to faster start WebUI X activities
+                LaunchedEffect(Unit) {
+                    initPlatform()
                 }
 
                 Scaffold(
