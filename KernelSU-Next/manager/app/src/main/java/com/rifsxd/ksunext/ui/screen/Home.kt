@@ -328,7 +328,7 @@ private fun StatusCard(
                         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
                         if (ksuVersion != null) {
                             context.startActivity(intent)
-                        } else if (ksuVersion == null && kernelVersion.isGKI()) {
+                        } else if (kernelVersion.isGKI()) {
                             onClickInstall()
                         } else {
                             Toast.makeText(context, "Something weird happened... 🤔", Toast.LENGTH_SHORT).show()
