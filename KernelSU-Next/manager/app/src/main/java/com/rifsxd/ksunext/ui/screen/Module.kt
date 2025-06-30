@@ -603,14 +603,16 @@ private fun ModuleList(
     }
     PullToRefreshBox(
         modifier = boxModifier,
+        isRefreshing = viewModel.isRefreshing,
         onRefresh = {
             viewModel.fetchModuleList()
-        },
-        isRefreshing = viewModel.isRefreshing
+        }
     ) {
         LazyColumn(
             state = listState,
-            modifier = modifier,
+            modifier = Modifier
+                .fillMaxSize()
+                .nestedScroll(TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()).nestedScrollConnection),
             verticalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = remember {
                 PaddingValues(
@@ -619,7 +621,7 @@ private fun ModuleList(
                     end = 16.dp,
                     bottom = 16.dp
                 )
-            },
+            }
         ) {
             when {
                 viewModel.moduleList.isEmpty() -> {
@@ -635,7 +637,6 @@ private fun ModuleList(
                         }
                     }
                 }
-
                 else -> {
                     items(viewModel.moduleList) { module ->
                         val scope = rememberCoroutineScope()
@@ -708,7 +709,6 @@ private fun ModuleList(
         }
 
         DownloadListener(context, onInstallModule)
-
     }
 }
 
