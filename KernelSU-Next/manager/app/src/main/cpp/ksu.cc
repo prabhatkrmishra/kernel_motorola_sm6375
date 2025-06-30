@@ -30,6 +30,7 @@
 #define CMD_IS_SU_ENABLED 14
 #define CMD_ENABLE_SU 15
 #define CMD_HOOK_MODE 16
+#define CMD_GET_MANAGER_UID 17
 
 static bool ksuctl(int cmd, void* arg1, void* arg2) {
     int32_t result = 0;
@@ -63,11 +64,18 @@ int get_version(void) {
     return version;
 }
 
+uid_t get_manager_uid() {
+    uid_t manager_uid = (uid_t)-1;
+    ksuctl(CMD_GET_MANAGER_UID, &manager_uid, nullptr);
+    return manager_uid;
+}
+
 const char* get_hook_mode() {
     static char mode[16];
     ksuctl(CMD_HOOK_MODE, mode, nullptr);
     return mode;
 }
+
 
 bool get_allow_list(int *uids, int *size) {
     return ksuctl(CMD_GET_SU_LIST, uids, size);

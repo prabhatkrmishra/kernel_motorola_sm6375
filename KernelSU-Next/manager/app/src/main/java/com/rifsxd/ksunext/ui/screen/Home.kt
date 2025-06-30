@@ -550,6 +550,8 @@ private fun InfoCard(autoExpand: Boolean = false) {
 
     var expanded by rememberSaveable { mutableStateOf(false) }
 
+    val developerOptionsEnabled = prefs.getBoolean("enable_developer_options", false)
+
     LaunchedEffect(autoExpand) {
         if (autoExpand) {
             expanded = true
@@ -598,7 +600,14 @@ private fun InfoCard(autoExpand: Boolean = false) {
                 val managerVersion = getManagerVersion(context)
                 InfoCardItem(
                     label = stringResource(R.string.home_manager_version),
-                    content = "${managerVersion.first} (${managerVersion.second})",
+                    content = if (
+                        developerOptionsEnabled &&
+                        Natives.version >= Natives.MINIMAL_SUPPORTED_MANAGER_UID
+                    ) {
+                        "${managerVersion.first} (${managerVersion.second}) | UID: ${Natives.getManagerUid()}"
+                    } else {
+                        "${managerVersion.first} (${managerVersion.second})"
+                    },
                     icon = painterResource(R.drawable.ic_ksu_next),
                 )
 
