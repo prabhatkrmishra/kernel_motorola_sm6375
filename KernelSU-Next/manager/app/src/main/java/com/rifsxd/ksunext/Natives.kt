@@ -74,6 +74,11 @@ object Natives {
     external fun getHookMode(): String?
 
     /**
+     * Check if Zygisk injection is enabled in the environment.
+     */
+    external fun isZygiskEnabled(): Boolean
+
+    /**
      * Get the profile of the given package.
      * @param key usually the package name
      * @return return null if failed.

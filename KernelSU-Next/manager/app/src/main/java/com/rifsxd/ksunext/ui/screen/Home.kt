@@ -34,6 +34,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.text.toUpperCase
@@ -141,6 +142,7 @@ fun HomeScreen(navigator: DestinationsNavigator) {
 
 @Composable
 private fun SuperuserCard() {
+    val count = getSuperuserCount()
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -157,11 +159,11 @@ private fun SuperuserCard() {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.home_superuser_count),
+                    text = pluralStringResource(R.plurals.home_superuser_count, count),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    text = getSuperuserCount().toString(),
+                    text = count.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -172,6 +174,7 @@ private fun SuperuserCard() {
 
 @Composable
 private fun ModuleCard() {
+    val count = getModuleCount()
     ElevatedCard(
         colors = CardDefaults.elevatedCardColors(
             containerColor = MaterialTheme.colorScheme.secondaryContainer
@@ -188,11 +191,11 @@ private fun ModuleCard() {
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 Text(
-                    text = stringResource(R.string.home_module_count),
+                    text = pluralStringResource(R.plurals.home_module_count, count),
                     style = MaterialTheme.typography.bodySmall
                 )
                 Text(
-                    text = getModuleCount().toString(),
+                    text = count.toString(),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -643,6 +646,15 @@ private fun InfoCard(autoExpand: Boolean = false) {
                             label = stringResource(R.string.home_susfs_version),
                             content = "${stringResource(R.string.susfs_supported)} | ${getSuSFSVersion()} (${getSuSFSVariant()}) $susSUMode",
                             icon = painterResource(R.drawable.ic_sus),
+                        )
+                    }
+
+                    Spacer(Modifier.height(16.dp))
+                    if (Natives.isZygiskEnabled()) {
+                        InfoCardItem(
+                            label = stringResource(R.string.zygisk_status),
+                            content = stringResource(R.string.enabled),
+                            icon = Icons.Filled.Vaccines
                         )
                     }
                 }

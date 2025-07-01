@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "ksu.h"
@@ -112,4 +113,8 @@ bool is_su_enabled() {
     // if ksuctl failed, we assume su is enabled, and it cannot be disabled.
     ksuctl(CMD_IS_SU_ENABLED, &enabled, nullptr);
     return enabled;
+}
+
+bool is_zygisk_enabled() {
+    return !!getenv("ZYGISK_ENABLED");
 }
