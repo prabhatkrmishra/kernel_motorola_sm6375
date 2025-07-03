@@ -203,12 +203,17 @@ class WebViewInterface(
     fun listSystemPackages(): String {
         val pm = context.packageManager
         val packages = pm.getInstalledPackages(0)
-        val jsonArray = JSONArray()
-        for (pkg in packages) {
-            val appInfo = pkg.applicationInfo
-            if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
-                jsonArray.put(pkg.packageName)
+        val packageNames = packages
+            .mapNotNull { pkg ->
+                val appInfo = pkg.applicationInfo
+                if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0) {
+                    pkg.packageName
+                } else null
             }
+            .sorted()
+        val jsonArray = JSONArray()
+        for (pkgName in packageNames) {
+            jsonArray.put(pkgName)
         }
         return jsonArray.toString()
     }
@@ -217,12 +222,17 @@ class WebViewInterface(
     fun listUserPackages(): String {
         val pm = context.packageManager
         val packages = pm.getInstalledPackages(0)
-        val jsonArray = JSONArray()
-        for (pkg in packages) {
-            val appInfo = pkg.applicationInfo
-            if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
-                jsonArray.put(pkg.packageName)
+        val packageNames = packages
+            .mapNotNull { pkg ->
+                val appInfo = pkg.applicationInfo
+                if (appInfo != null && (appInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0) {
+                    pkg.packageName
+                } else null
             }
+            .sorted()
+        val jsonArray = JSONArray()
+        for (pkgName in packageNames) {
+            jsonArray.put(pkgName)
         }
         return jsonArray.toString()
     }
@@ -231,9 +241,10 @@ class WebViewInterface(
     fun listAllPackages(): String {
         val pm = context.packageManager
         val packages = pm.getInstalledPackages(0)
+        val packageNames = packages.map { it.packageName }.sorted()
         val jsonArray = JSONArray()
-        for (pkg in packages) {
-            jsonArray.put(pkg.packageName)
+        for (pkgName in packageNames) {
+            jsonArray.put(pkgName)
         }
         return jsonArray.toString()
     }
