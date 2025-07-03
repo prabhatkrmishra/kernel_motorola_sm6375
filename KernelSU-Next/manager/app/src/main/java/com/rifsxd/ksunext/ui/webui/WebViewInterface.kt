@@ -1,5 +1,10 @@
 package com.rifsxd.ksunext.ui.webui
 
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.BitmapDrawable
+import android.graphics.drawable.Drawable
+import android.util.Base64
 import android.app.Activity
 import android.content.Context
 import android.content.pm.ApplicationInfo
@@ -276,6 +281,56 @@ class WebViewInterface(
         }
         return jsonArray.toString()
     }
+
+    private val packageIconCache = HashMap<String, String>()
+    @JavascriptInterface
+    fun cacheAllPackageIcons(size: Int) {
+        val pm = context.packageManager
+        val packages = pm.getInstalledPackages(0)
+        val outputStream = java.io.ByteArrayOutputStream()
+        for (pkg in packages) {
+            val pkgName = pkg.packageName
+            if (packageIconCache.containsKey(pkgName)) continue
+            try {
+                val appInfo = pm.getApplicationInfo(pkgName, 0)
+                val drawable = pm.getApplicationIcon(appInfo)
+                val bitmap = drawableToBitmap(drawable, size)
+                outputStream.reset()
+                bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                val byteArray = outputStream.toByteArray()
+                val iconBase64 = "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                packageIconCache[pkgName] = iconBase64
+            } catch (_: Exception) {
+                packageIconCache[pkgName] = ""
+            }
+        }
+    }
+
+    @JavascriptInterface
+    fun getPackagesIcons(packageNamesJson: String): String {
+        val packageNames = JSONArray(packageNamesJson)
+        val jsonArray = JSONArray()
+        for (i in 0 until packageNames.length()) {
+            val pkgName = packageNames.getString(i)
+            val obj = JSONObject()
+            obj.put("packageName", pkgName)
+            val cachedIcon = packageIconCache[pkgName]
+            obj.put("icon", cachedIcon ?: "")
+            jsonArray.put(obj)
+        }
+        return jsonArray.toString()
+    }
+}
+
+fun drawableToBitmap(drawable: Drawable, size: Int): Bitmap {
+    if (drawable is BitmapDrawable && drawable.bitmap.width == size && drawable.bitmap.height == size) {
+        return drawable.bitmap
+    }
+    val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    drawable.setBounds(0, 0, size, size)
+    drawable.draw(canvas)
+    return bitmap
 }
 
 fun hideSystemUI(window: Window) =
