@@ -283,6 +283,7 @@ class WebViewInterface(
     }
 
     private val packageIconCache = HashMap<String, String>()
+
     @JavascriptInterface
     fun cacheAllPackageIcons(size: Int) {
         val pm = context.packageManager
@@ -307,15 +308,31 @@ class WebViewInterface(
     }
 
     @JavascriptInterface
-    fun getPackagesIcons(packageNamesJson: String): String {
+    fun getPackagesIcons(packageNamesJson: String, size: Int): String {
+        val pm = context.packageManager
         val packageNames = JSONArray(packageNamesJson)
         val jsonArray = JSONArray()
+        val outputStream = java.io.ByteArrayOutputStream()
         for (i in 0 until packageNames.length()) {
             val pkgName = packageNames.getString(i)
             val obj = JSONObject()
             obj.put("packageName", pkgName)
-            val cachedIcon = packageIconCache[pkgName]
-            obj.put("icon", cachedIcon ?: "")
+            var iconBase64 = packageIconCache[pkgName]
+            if (iconBase64 == null) {
+                try {
+                    val appInfo = pm.getApplicationInfo(pkgName, 0)
+                    val drawable = pm.getApplicationIcon(appInfo)
+                    val bitmap = drawableToBitmap(drawable, size)
+                    outputStream.reset()
+                    bitmap.compress(Bitmap.CompressFormat.PNG, 100, outputStream)
+                    val byteArray = outputStream.toByteArray()
+                    iconBase64 = "data:image/png;base64," + Base64.encodeToString(byteArray, Base64.NO_WRAP)
+                } catch (_: Exception) {
+                    iconBase64 = ""
+                }
+                packageIconCache[pkgName] = iconBase64
+            }
+            obj.put("icon", iconBase64)
             jsonArray.put(obj)
         }
         return jsonArray.toString()
