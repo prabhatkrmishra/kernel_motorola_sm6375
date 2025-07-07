@@ -72,7 +72,7 @@
   <string name="module_version_code">Код версии</string>
   <string name="module_update_json">Json обновления</string>
   <string name="module_update_json_empty">Пусто</string>
-  <string name="enable_developer_options">Включить режим разработчика</string>
+  <string name="enable_developer_options">Режим разработчика</string>
   <string name="enable_developer_options_summary">Показывать скрытые настройки и отладочную информацию, предназначенную для разработчиков.</string>
   <string name="module_overlay_fs_not_available">Модули недоступны из-за отключенного OverlayFS в ядре!</string>
   <string name="refresh">Обновить</string>
@@ -104,7 +104,7 @@
   <string name="cancel">Отмена</string>
   <string name="later">Позже</string>
   <string name="lkm_warning_message">Патч LKM использует компоненты с закрытым исходным кодом. Хотите продолжить?</string>
-  <string name="home_next_kernelsu">🔥 Версия Next</string>
+  <string name="home_next_kernelsu">🔥 Новая версия</string>
   <string name="home_next_kernelsu_repo">https://github.com/KernelSU-Next/KernelSU-Next</string>
   <string name="home_next_kernelsu_body">Next - экспериментальная версия. Проверь её версию на GitHub!</string>
   <string name="home_experimental_kernelsu">⚠️ Предупреждение об экспериментальной разработке!</string>
@@ -223,8 +223,8 @@
   <string name="sucompat_disabled">SUCOMPAT ОТКЛЮЧЕН</string>
   <string name="zygisk_required">Требуется Zygisk</string>
   <string name="zygisk_status">Инжект Zygisk</string>
-  <string name="home_superuser_count_singular">Выдано право</string>
-  <string name="home_superuser_count_plural">Выдано прав</string>
+  <string name="home_superuser_count_singular">Выдано право суперпользователя</string>
+  <string name="home_superuser_count_plural">Выданы права суперпользователей</string>
   <string name="home_module_count_singular">Модуль</string>
   <string name="home_module_count_plural">Модулей</string>
   <string name="module_backup_message">Резервное копирование текущих установленных модулей.</string>
