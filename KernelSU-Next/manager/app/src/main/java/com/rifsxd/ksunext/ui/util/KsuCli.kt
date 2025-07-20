@@ -591,9 +591,16 @@ fun getSuSFSVariant(): String {
     val result = ShellUtils.fastCmd(shell, "${getSuSFSDaemonPath()} variant")
     return result
 }
+
 fun getSuSFSFeatures(): String {
     val shell = getRootShell()
     val result = ShellUtils.fastCmd(shell, "${getSuSFSDaemonPath()} features")
+    return result
+}
+
+fun hasSuSFs_SUS_SU(): String {
+    val shell = getRootShell()
+    val result = ShellUtils.fastCmd(shell, "${getSuSFSDaemonPath()} sus_su support")
     return result
 }
 

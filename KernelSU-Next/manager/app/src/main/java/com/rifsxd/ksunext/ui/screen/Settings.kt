@@ -201,9 +201,9 @@ fun SettingScreen(navigator: DestinationsNavigator) {
             val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
             val suSFS = getSuSFS()
-            val isSUS_SU = getSuSFSFeatures()
+            val isSUS_SU = hasSuSFs_SUS_SU() == "Supported"
             if (suSFS == "Supported") {
-                if (isSUS_SU == "CONFIG_KSU_SUSFS_SUS_SU") {
+                if (isSUS_SU) {
                     var isEnabled by rememberSaveable {
                         mutableStateOf(susfsSUS_SU_Mode() == "2")
                     }
