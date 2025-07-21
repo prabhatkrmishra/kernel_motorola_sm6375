@@ -323,6 +323,7 @@ pub fn restore(
     ensure!(status.success(), "magiskboot unpack failed");
 
     let no_ramdisk = !workdir.join("ramdisk.cpio").exists();
+    // let no_ramdisk = !workdir.join("ramdisk.cpio").exists();
     let no_vendor_init_boot = !workdir
         .join("vendor_ramdisk")
         .join("init_boot.cpio")
@@ -370,41 +371,78 @@ pub fn restore(
     }
 
     if new_boot.is_none() {
-        if no_ramdisk {
-            if !no_vendor_init_boot {
-                // vendor init_boot restore
-                do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
-
-                let status =
-                    do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
-                if status {
-                    do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
-                } else {
-                    let vendor_init_boot = workdir.join("vendor_ramdisk").join("init_boot.cpio");
-                    std::fs::remove_file(vendor_init_boot)?;
-                }
-            } else if !no_vendor_ramdisk {
-                // vendor ramdisk restore
-                do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
-
-                let status =
-                    do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
-                if status {
-                    do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
-                } else {
-                    let vendor_ramdisk = workdir.join("vendor_ramdisk").join("ramdisk.cpio");
-                    std::fs::remove_file(vendor_ramdisk)?;
-                }
-            }
-        } else {
+        if !no_ramdisk {
+            println!("- Restoring /ramdisk");
+            println!("- Removing /ramdisk/kernelsu.ko");
             // remove kernelsu.ko
             do_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
 
             // if init.real exists, restore it
+            println!("- Checking if init.real exists");
             let status = do_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
             if status {
+                println!("- /ramdisk/init.real exists");
+                println!("- Restoring /ramdisk/init.real to init");
                 do_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
             } else {
+                println!("- /ramdisk/init.real not found");
+                println!("- Removing ramdisk.cpio");
+                let ramdisk = workdir.join("ramdisk.cpio");
+                std::fs::remove_file(ramdisk)?;
+            }
+        } else if !no_vendor_init_boot {
+            println!("- Restoring /vendor_ramdisk/init_boot");
+            println!("- Removing /vendor_ramdisk/init_boot/kernelsu.ko");
+            // vendor init_boot restore
+            do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
+
+            println!("- Checking if init.real exists");
+            let status =
+                do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
+            if status {
+                println!("- /vendor_ramdisk/init_boot/init.real exists");
+                println!("- Restoring /vendor_ramdisk/init_boot/init.real to init");
+                do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
+            } else {
+                println!("- /vendor_ramdisk/init_boot/init.real not found");
+                println!("- Removing vendor_ramdisk/init_boot.cpio");
+                let vendor_init_boot = workdir.join("vendor_ramdisk").join("init_boot.cpio");
+                std::fs::remove_file(vendor_init_boot)?;
+            }
+        } else if !no_vendor_ramdisk {
+            println!("- Restoring /vendor_ramdisk/ramdisk");
+            println!("- Removing /vendor_ramdisk/ramdisk/kernelsu.ko");
+            // vendor ramdisk restore
+            do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
+
+            let status =
+                do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
+            if status {
+                println!("- /vendor_ramdisk/ramdisk/init.real exists");
+                println!("- Restoring /vendor_ramdisk/ramdisk/init.real to init");
+                do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
+            } else {
+                println!("- /vendor_ramdisk/ramdisk/init.real not found");
+                println!("- Removing vendor_ramdisk/ramdisk.cpio");
+                let vendor_ramdisk = workdir.join("vendor_ramdisk").join("ramdisk.cpio");
+                std::fs::remove_file(vendor_ramdisk)?;
+            }
+        } else {
+            println!("- Restoring /ramdisk");
+            println!("- Removing /ramdisk/kernelsu.ko");
+            // remove kernelsu.ko
+            do_cpio_cmd(&magiskboot, workdir, "rm kernelsu.ko")?;
+
+            // if init.real exists, restore it
+            println!("- Checking if init.real exists");
+            let status = do_cpio_cmd(&magiskboot, workdir, "exists init.real").is_ok();
+            if status {
+                println!("- /ramdisk/init.real exists");
+                println!("- Restoring /ramdisk/init.real to init");
+                do_cpio_cmd(&magiskboot, workdir, "mv init.real init")?;
+            } else {
+                println!("- /ramdisk/init.real not found");
+                println!("- Removing ramdisk.cpio");
                 let ramdisk = workdir.join("ramdisk.cpio");
                 std::fs::remove_file(ramdisk)?;
             }
@@ -584,7 +622,8 @@ fn do_patch(
         .exists();
     let no_vendor_ramdisk = !workdir.join("vendor_ramdisk").join("ramdisk.cpio").exists();
     if no_ramdisk && no_vendor_init_boot && no_vendor_ramdisk {
-        bail!("No compatible ramdisk found.");
+        println!("- No compatible ramdisk found.");
+        println!("- Will create our own ramdisk!");
     }
     let is_magisk_patched = is_magisk_patched(&magiskboot, workdir)?;
     let is_magisk_patched_vendor_init_boot =
@@ -605,45 +644,59 @@ fn do_patch(
         is_kernelsu_patched_vendor_ramdisk(&magiskboot, workdir)?;
 
     let mut need_backup = false;
-    if !is_kernelsu_patched
-        || (no_ramdisk && !is_kernelsu_patched_vendor_init_boot)
+    if (no_ramdisk && !is_kernelsu_patched_vendor_init_boot)
         || (no_ramdisk && no_vendor_init_boot && !is_kernelsu_patched_vendor_ramdisk)
+        || !is_kernelsu_patched
     {
-        if no_ramdisk {
-            if !no_vendor_init_boot {
-                // vendor init_boot patching
-                let status = do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "exists init");
-                if status.is_ok() {
-                    do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
-                }
-                need_backup = flash;
-            } else if !no_vendor_ramdisk {
-                // vendor ramdisk patching
-                let status = do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "exists init");
-                if status.is_ok() {
-                    do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
-                }
-                need_backup = flash;
-            }
-        } else {
-            // kernelsu.ko is not exist, backup init if necessary
+        if !no_ramdisk {
+            println!("- Checking if /ramdisk/init exists");
             let status = do_cpio_cmd(&magiskboot, workdir, "exists init");
             if status.is_ok() {
+                println!("- Backing up ramdisk/init");
+                do_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
+            }
+            need_backup = flash;
+        } else if !no_vendor_init_boot {
+            println!("- Checking if /vendor_ramdisk/init_boot/init exists");
+            let status = do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "exists init");
+            if status.is_ok() {
+                println!("- Backing up vendor_ramdisk/init_boot/init");
+                do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
+            }
+            need_backup = flash;
+        } else if !no_vendor_ramdisk {
+            println!("- Checking if /vendor_ramdisk/ramdisk/init exists");
+            let status = do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "exists init");
+            if status.is_ok() {
+                println!("- Backing up vendor_ramdisk/ramdisk/init");
+                do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
+            }
+            need_backup = flash;
+        } else {
+            println!("- Checking if /ramdisk/init exists");
+            let status = do_cpio_cmd(&magiskboot, workdir, "exists init");
+            if status.is_ok() {
+                println!("- Backing up ramdisk/init");
                 do_cpio_cmd(&magiskboot, workdir, "mv init init.real")?;
             }
             need_backup = flash;
         }
     }
 
-    if no_ramdisk {
-        if !no_vendor_init_boot {
-            do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "add 0755 init init")?;
-            do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "add 0755 kernelsu.ko kernelsu.ko")?;
-        } else if !no_vendor_ramdisk {
-            do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "add 0750 init init")?;
-            do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "add 0750 kernelsu.ko kernelsu.ko")?;
-        }
+    if !no_ramdisk {
+        println!("- Patching /ramdisk");
+        do_cpio_cmd(&magiskboot, workdir, "add 0755 init init")?;
+        do_cpio_cmd(&magiskboot, workdir, "add 0755 kernelsu.ko kernelsu.ko")?;
+    } else if !no_vendor_init_boot {
+        println!("- Patching /vendor_ramdisk/init_boot");
+        do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "add 0755 init init")?;
+        do_vendor_init_boot_cpio_cmd(&magiskboot, workdir, "add 0755 kernelsu.ko kernelsu.ko")?;
+    } else if !no_vendor_ramdisk {
+        println!("- Patching /vendor_ramdisk/ramdisk");
+        do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "add 0750 init init")?;
+        do_vendor_ramdisk_cpio_cmd(&magiskboot, workdir, "add 0750 kernelsu.ko kernelsu.ko")?;
     } else {
+        println!("- Creating and Patching /ramdisk");
         do_cpio_cmd(&magiskboot, workdir, "add 0755 init init")?;
         do_cpio_cmd(&magiskboot, workdir, "add 0755 kernelsu.ko kernelsu.ko")?;
     }
