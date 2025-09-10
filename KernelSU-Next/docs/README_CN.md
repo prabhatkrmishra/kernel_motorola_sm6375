@@ -54,9 +54,10 @@ KernelSU Next 支持从 **4.4 到 6.6** 的大多数安卓内核。
 
 ---
 
-## 🔐 安全性
+## 🏅 贡献
 
-有关报告 KernelSU Next 漏洞的信息，请参阅 [SECURITY.md](/SECURITY.md)。
+- 前往 [Crowdin](https://crowdin.com/project/kernelsu-next) 为管理器提交翻译！
+- 有关报告 KernelSU Next 漏洞的信息，请参阅 [SECURITY.md](/SECURITY.md)。
 
 ---
 

@@ -55,9 +55,10 @@ Please refer to the [Installation](https://kernelsu-next.github.io/webpage/pages
 
 ---
 
-## 🔐 Security
+## 🏅 Contribution
 
-To report security issues, please see [SECURITY.md](/SECURITY.md).
+- Go to our [Crowdin](https://crowdin.com/project/kernelsu-next) to submit a translation for the manager!
+- To report security issues, please see [SECURITY.md](/SECURITY.md).
 
 ---
 
