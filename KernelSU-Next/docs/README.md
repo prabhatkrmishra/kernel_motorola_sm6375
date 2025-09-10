@@ -37,7 +37,7 @@
 
 ## ✅ Compatibility
 
-KernelSU Next supports Android kernels from **4.4 up to 6.6**:
+KernelSU Next supports Android kernels from **4.4 up to 6.6**.
 
 | Kernel version       | Support notes                                                           |
 |----------------------|-------------------------------------------------------------------------|
@@ -70,7 +70,7 @@ To report security issues, please see [SECURITY.md](/SECURITY.md).
 
 ## 💸 Donations
 
-If you’d like to support the project:
+If you'd like to support the project:
 
 - **USDT (BEP20, ERC20)**: `0x12b5224b7aca0121c2f003240a901e1d064371c1`
 - **USDT (TRC20)**: `TYUVMWGTcnR5svnDoX85DWHyqUAeyQcdjh`
