@@ -25,13 +25,14 @@
 #include "allowlist.h"
 #include "manager.h"
 #include "syscall_hook_manager.h"
+#include "su_mount_ns.h"
 #include "kernel_compat.h"
 
 #define FILE_MAGIC 0x7f4b5355 // ' KSU', u32
 #define FILE_FORMAT_VERSION 3 // u32
 
 #define KSU_APP_PROFILE_PRESERVE_UID 9999 // NOBODY_UID
-#define KSU_DEFAULT_SELINUX_DOMAIN "u:r:su:s0"
+#define KSU_DEFAULT_SELINUX_DOMAIN "u:r:" KERNEL_SU_DOMAIN ":s0"
 
 static DEFINE_MUTEX(allowlist_mutex);
 
@@ -76,14 +77,14 @@ static void init_default_profiles()
 {
 	kernel_cap_t full_cap = CAP_FULL_SET;
 
-	default_root_profile.uid = 0;
-	default_root_profile.gid = 0;
-	default_root_profile.groups_count = 1;
-	default_root_profile.groups[0] = 0;
-	memcpy(&default_root_profile.capabilities.effective, &full_cap,
-		sizeof(default_root_profile.capabilities.effective));
-	default_root_profile.namespaces = 0;
-	strcpy(default_root_profile.selinux_domain, KSU_DEFAULT_SELINUX_DOMAIN);
+    default_root_profile.uid = 0;
+    default_root_profile.gid = 0;
+    default_root_profile.groups_count = 1;
+    default_root_profile.groups[0] = 0;
+    memcpy(&default_root_profile.capabilities.effective, &full_cap,
+           sizeof(default_root_profile.capabilities.effective));
+    default_root_profile.namespaces = KSU_NS_INHERITED;
+    strcpy(default_root_profile.selinux_domain, KSU_DEFAULT_SELINUX_DOMAIN);
 
 	// This means that we will umount modules by default!
 	default_non_root_profile.umount_modules = true;
@@ -284,8 +285,8 @@ bool __ksu_is_allow_uid(uid_t uid)
 		return false;
 	}
 
-	if (likely(ksu_is_manager_uid_valid()) &&
-		unlikely(ksu_get_manager_uid() == uid)) {
+	if (likely(ksu_is_manager_appid_valid()) &&
+		unlikely(ksu_get_manager_appid() == uid % PER_USER_RANGE)) {
 		// manager is always allowed!
 		return true;
 	}
@@ -315,8 +316,8 @@ bool __ksu_is_allow_uid_for_current(uid_t uid)
 bool ksu_uid_should_umount(uid_t uid)
 {
 	struct app_profile profile = { .current_uid = uid };
-	if (likely(ksu_is_manager_uid_valid()) &&
-		unlikely(ksu_get_manager_uid() == uid)) {
+	if (likely(ksu_is_manager_appid_valid()) &&
+		unlikely(ksu_get_manager_appid() == uid % PER_USER_RANGE)) {
 		// we should not umount on manager!
 		return false;
 	}

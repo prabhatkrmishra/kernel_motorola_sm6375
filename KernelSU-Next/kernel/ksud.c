@@ -48,19 +48,19 @@ static const char KERNEL_SU_RC[] =
 	"on post-fs-data\n"
 	"    start logd\n"
 	// We should wait for the post-fs-data finish
-	"    exec u:r:su:s0 root -- " KSUD_PATH " post-fs-data\n"
+	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " post-fs-data\n"
 	"\n"
 
 	"on nonencrypted\n"
-	"    exec u:r:su:s0 root -- " KSUD_PATH " services\n"
+	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " services\n"
 	"\n"
 
 	"on property:vold.decrypt=trigger_restart_framework\n"
-	"    exec u:r:su:s0 root -- " KSUD_PATH " services\n"
+	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " services\n"
 	"\n"
 
 	"on property:sys.boot_completed=1\n"
-	"    exec u:r:su:s0 root -- " KSUD_PATH " boot-completed\n"
+	"    exec u:r:" KERNEL_SU_DOMAIN ":s0 root -- " KSUD_PATH " boot-completed\n"
 	"\n"
 
 	"\n";
@@ -127,11 +127,13 @@ void on_module_mounted(void)
 	ksu_module_mounted = true;
 }
 
+extern void ksu_avc_spoof_late_init();
 void on_boot_completed(void)
 {
     ksu_boot_completed = true;
     pr_info("on_boot_completed!\n");
     track_throne(true);
+    ksu_avc_spoof_late_init();
 }
 
 #define MAX_ARG_STRINGS 0x7FFFFFFF
@@ -253,6 +255,7 @@ static int ksu_handle_bprm_ksud(const char *filename, const char *argv1, const c
 		if (argv1 && !strcmp(argv1, "second_stage")) {
 			pr_info("%s: /system/bin/init second_stage executed\n", __func__);
 			apply_kernelsu_rules();
+			setup_ksu_cred();
 			init_second_stage_executed = true;
 		}
 	}
