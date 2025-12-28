@@ -13,7 +13,7 @@ static int transive_to_domain(const char *domain, struct cred *cred)
     u32 sid;
     int error;
 
-    tsec = cred->security;
+    tsec = __selinux_cred(cred);
     if (!tsec) {
         pr_err("tsec == NULL!\n");
         return -1;
