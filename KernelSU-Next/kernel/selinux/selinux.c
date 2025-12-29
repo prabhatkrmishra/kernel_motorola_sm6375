@@ -13,7 +13,7 @@ static int transive_to_domain(const char *domain, struct cred *cred)
     u32 sid;
     int error;
 
-    tsec = __selinux_cred(cred);
+    tsec = selinux_cred(cred);
     if (!tsec) {
         pr_err("tsec == NULL!\n");
         return -1;
@@ -133,7 +133,7 @@ bool is_task_ksu_domain(const struct cred *cred)
     if (!cred) {
         return false;
     }
-    const struct task_security_struct *tsec = __selinux_cred(cred);
+    const struct task_security_struct *tsec = selinux_cred(cred);
     if (!tsec) {
         return false;
     }
@@ -157,7 +157,7 @@ bool is_context(const struct cred *cred, const char *context)
     if (!cred) {
         return false;
     }
-    const struct task_security_struct * tsec = __selinux_cred(cred);
+    const struct task_security_struct * tsec = selinux_cred(cred);
     if (!tsec) {
         return false;
     }

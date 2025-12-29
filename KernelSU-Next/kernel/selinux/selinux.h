@@ -6,17 +6,10 @@
 #include "linux/cred.h"
 
 #include "objsec.h"
-#if defined(SAMSUNG_SELINUX_PORTING) || defined(KSU_COMPAT_HAS_SELINUX_STATE)
 #include "security.h" // Samsung SELinux Porting
-#endif
-#ifndef KSU_COMPAT_HAS_SELINUX_STATE
-#include "avc.h"
-#endif
 
-#ifdef KSU_OPTIONAL_SELINUX_CRED
-#define __selinux_cred(cred) (selinux_cred(cred))
-#else
-#define __selinux_cred(cred) (cred->security)
+#ifndef KSU_COMPAT_USE_SELINUX_STATE
+#include "avc.h"
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 18, 0)
@@ -35,14 +28,6 @@ static inline u32 current_sid(void)
 	const struct task_security_struct *tsec = current_security();
 
 	return tsec->sid;
-}
-#endif
-
-#if (LINUX_VERSION_CODE < KERNEL_VERSION(5, 1, 0) &&                           \
-     !defined(KSU_OPTIONAL_SELINUX_CRED))
-static inline taskcred_sec_t *selinux_cred(const struct cred *cred)
-{
-	return (taskcred_sec_t *)cred->security;
 }
 #endif
 
