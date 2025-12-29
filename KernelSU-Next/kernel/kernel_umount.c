@@ -9,9 +9,6 @@
 #include <linux/path.h>
 #include <linux/printk.h>
 #include <linux/types.h>
-#ifndef KSU_HAS_PATH_UMOUNT
-#include <linux/syscalls.h>
-#endif
 
 #include "kernel_umount.h"
 #include "klog.h" // IWYU pragma: keep
@@ -45,8 +42,6 @@ static const struct ksu_feature_handler kernel_umount_handler = {
 	.set_handler = kernel_umount_feature_set,
 };
 
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 9, 0) ||                           \
-	defined(KSU_HAS_PATH_UMOUNT)
 extern int path_umount(struct path *path, int flags);
 static void ksu_umount_mnt(struct path *path, int flags)
 {
@@ -55,29 +50,6 @@ static void ksu_umount_mnt(struct path *path, int flags)
 		pr_info("umount %s failed: %d\n", path->dentry->d_iname, err);
 	}
 }
-#else
-static void ksu_sys_umount(const char *mnt, int flags)
-{
-	char __user *usermnt = (char __user *)mnt;
-	mm_segment_t old_fs;
-
-	old_fs = get_fs();
-	set_fs(KERNEL_DS);
-#if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 17, 0)
-	ksys_umount(usermnt, flags);
-#else
-	sys_umount(usermnt, flags); // cuz asmlinkage long sys##name
-#endif
-	set_fs(old_fs);
-}
-
-#define ksu_umount_mnt(mnt, __unused, flags)                                   \
-	({                                                                     \
-		path_put(__unused);                                            \
-		ksu_sys_umount(mnt, flags);                                    \
-	})
-
-#endif
 
 static void try_umount(const char *mnt, int flags)
 {
@@ -92,11 +64,7 @@ static void try_umount(const char *mnt, int flags)
 		path_put(&path);
 		return;
 	}
-#ifndef KSU_HAS_PATH_UMOUNT
-    ksu_umount_mnt(mnt, &path, flags);
-#else
 	ksu_umount_mnt(&path, flags);
-#endif
 }
 
 struct umount_tw {
