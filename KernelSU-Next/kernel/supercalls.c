@@ -882,10 +882,9 @@ void ksu_supercalls_init(void)
 	} else {
 		pr_info("reboot kprobe registered successfully\n");
 	}
-
-
-    sulog_init_heap(); // grab heap memory
 #endif
+
+	sulog_init_heap(); // grab heap memory
 }
 
 void ksu_supercalls_exit(void){
