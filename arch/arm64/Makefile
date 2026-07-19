@@ -55,6 +55,11 @@ endif
 
 ifdef CONFIG_CC_IS_CLANG
 KBUILD_CFLAGS	+= -mno-implicit-float
+
+# SM6375: Cortex-A78 + Cortex-A55, ARMv8.2-A
+KBUILD_CFLAGS += -march=armv8.2-a -mtune=cortex-a55
+KBUILD_AFLAGS += -march=armv8.2-a
+
 else
 KBUILD_CFLAGS	+= -mgeneral-regs-only
 endif
