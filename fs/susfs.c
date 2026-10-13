@@ -7,6 +7,7 @@
 #include <linux/namei.h>
 #include <linux/list.h>
 #include <linux/init_task.h>
+#include <linux/mutex.h>
 #include <linux/spinlock.h>
 #include <linux/stat.h>
 #include <linux/uaccess.h>
