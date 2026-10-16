@@ -121,6 +121,17 @@ LTO="$CLANG_LTO_TYPE" \
 TARGET_PRODUCT="$BUILD_TARGET_PRODUCT" \
 BUILD_KERNEL=1 \
 build/build.sh \
+    CC="$LLVM_DIR/clang" \
+    LD="$LLVM_DIR/ld.lld" \
+    AR="$LLVM_DIR/llvm-ar" \
+    NM="$LLVM_DIR/llvm-nm" \
+    OBJCOPY="$LLVM_DIR/llvm-objcopy" \
+    OBJDUMP="$LLVM_DIR/llvm-objdump" \
+    READELF="$LLVM_DIR/llvm-readelf" \
+    OBJSIZE="$LLVM_DIR/llvm-size" \
+    STRIP="$LLVM_DIR/llvm-strip" \
+    LLVM_AR="$LLVM_DIR/llvm-ar" \
+    LLVM_NM="$LLVM_DIR/llvm-nm" \
     -j"$JOBS"
 BUILD_RC=$?
 
