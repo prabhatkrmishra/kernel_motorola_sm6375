@@ -121,6 +121,9 @@ LTO="$CLANG_LTO_TYPE" \
 TARGET_PRODUCT="$BUILD_TARGET_PRODUCT" \
 BUILD_KERNEL=1 \
 build/build.sh \
+    CLANG_TRIPLE=aarch64-linux-gnu- \
+    CROSS_COMPILE=aarch64-linux-gnu- \
+    CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
     CC="$LLVM_DIR/clang" \
     LD="$LLVM_DIR/ld.lld" \
     AR="$LLVM_DIR/llvm-ar" \
