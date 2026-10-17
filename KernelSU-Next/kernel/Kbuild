@@ -73,6 +73,25 @@ obj-$(CONFIG_KSU) += kernelsu.o
 LPATH := /usr/bin/env PATH="$$PATH":/usr/bin:/usr/local/bin
 MDIR := $(dir $(abspath $(lastword $(MAKEFILE_LIST))))
 
+# Integrated builds pin the reported version here, so that KSU does not
+# depend on git introspection. Without this, a tarball export, a git-less
+# copy, or a shallow clone with no network falls back to version 1 and tag
+# v0.0.1, and emits both "not defined" warnings below.
+#
+# Both values must be set to take this path. Leave them empty to derive the
+# version from the checkout's own history (upstream behaviour). Either can
+# still be overridden from the command line:
+#   make KSU_VERSION_PINNED=33314
+#   make KSU_VERSION_TAG_PINNED=v3.4.0-legacy
+#
+# Pinned from the vendored legacy checkout: upstream d51ca52c (v3.4.0-legacy,
+# 3025 commits) plus the local "integrate SUSFS addon" commit = 3026, and
+# 30000 + 3026 + 289 = 33315. Re-pin after pulling newer upstream legacy.
+KSU_VERSION_PINNED ?= 33315
+KSU_VERSION_TAG_PINNED ?= v3.4.0-legacy
+
+ifeq ($(strip $(KSU_VERSION_PINNED)$(KSU_VERSION_TAG_PINNED)),)
+
 # Check if this is a git repository
 # Try to detect Git repo intelligently
 GIT_ROOT := $(shell cd $(MDIR) && $(LPATH) git rev-parse --show-toplevel 2>/dev/null)
@@ -125,6 +144,19 @@ endif
 
 $(info -- KernelSU-Next tag: $(KSU_VERSION_TAG))
 ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG)\"
+
+else
+
+# Pinned path: report the integrated build's version and skip the git probe
+# above entirely, so no fallback warning is emitted.
+KSU_VERSION := $(KSU_VERSION_PINNED)
+KSU_VERSION_TAG := $(KSU_VERSION_TAG_PINNED)
+$(info -- KernelSU-Next version pinned: $(KSU_VERSION))
+$(info -- KernelSU-Next tag pinned: $(KSU_VERSION_TAG))
+ccflags-y += -DKSU_VERSION=$(KSU_VERSION)
+ccflags-y += -DKSU_VERSION_TAG=\"$(KSU_VERSION_TAG)\"
+
+endif
 
 ifndef KSU_NEXT_MANAGER_SIZE
 KSU_NEXT_MANAGER_SIZE := 0x3e6
