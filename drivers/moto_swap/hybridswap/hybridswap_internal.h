@@ -489,11 +489,6 @@ static inline unsigned long long hybridswap_read_mcg_stats(
 	return 0;
 }
 
-unsigned long long hybridswap_fetch_zram_pagefault(void)
-{
-	return 0;
-}
-
 static inline unsigned long long hybridswap_fetch_zram_pagefault(void)
 {
 	return 0;
