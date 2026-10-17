@@ -159,9 +159,10 @@ struct hyb_entries_table {
 #define index_node(index, tab) ((tab)->fetch_node((index), (tab)->private))
 /*
  * fetch_node() returns NULL when a node cannot be resolved - notably a memcg
- * that is already dying, which find_memcg_by_id_locked() rejects. The old
- * unguarded macro dereferenced it, which NULL-derefed in
- * fetch_memcg_zram_entry() during hybridswap_manager_memcg_deinit().
+ * that cannot be resolved - an id no longer in mem_cgroup_idr, or an
+ * out-of-range index. The old unguarded macro dereferenced it, which
+ * NULL-derefed in fetch_memcg_zram_entry() during
+ * hybridswap_manager_memcg_deinit().
  *
  * Return the index unchanged for a dead node so nothing is dereferenced, and
  * let node_resolves() end the walk. The self-reference alone is not enough:
@@ -3356,32 +3357,6 @@ struct mem_cgroup *find_memcg_by_id_ref(unsigned short memcgid)
 	return mcg;
 }
 
-#ifdef CONFIG_HYBRIDSWAP_CORE
-/*
- * For the fetch_node() callbacks, which hand back a pointer into the memcg's
- * private data and so cannot hold a reference for the caller to release.
- * Look up under rcu_read_lock() - idr_find() must not race an idr removal -
- * and refuse a memcg that is already on its way out rather than building an
- * offsetof() pointer into freed memory. css_is_dying() is the 5.4 spelling;
- * there is no css_is_alive() in this tree.
- */
-static struct mem_cgroup *find_memcg_by_id_locked(unsigned short memcgid)
-{
-	struct mem_cgroup *mcg = NULL;
-	bool dying;
-
-	rcu_read_lock();
-	mcg = mem_cgroup_from_id(memcgid);
-	if (mcg) {
-		dying = css_is_dying(&mcg->css);
-		if (dying)
-			mcg = NULL;
-	}
-	rcu_read_unlock();
-
-	return mcg;
-}
-#endif
 
 static bool frag_info_dec(bool prev_flag, bool next_flag,
 			 struct hybstatus *stat)
@@ -3602,7 +3577,7 @@ static struct hyb_entries_head *fetch_objects_node(int index, void *private)
 		return &infos->maps[index];
 	index -= infos->nr_es;
 	if (index > 0 && index < infos->memcg_num) {
-		struct mem_cgroup *mcg = find_memcg_by_id_locked(index);
+		struct mem_cgroup *mcg = find_memcg_by_id(index);
 
 		if (!mcg)
 			goto err_out;
@@ -3688,7 +3663,7 @@ static struct hyb_entries_head *fetch_eswap_table_node(int index, void *private)
 		return &infos->eswap[index];
 	index -= infos->nr_es;
 	if (index > 0 && index < infos->memcg_num) {
-		struct mem_cgroup *mcg = find_memcg_by_id_locked(index);
+		struct mem_cgroup *mcg = find_memcg_by_id(index);
 
 		if (!mcg)
 			return NULL;
