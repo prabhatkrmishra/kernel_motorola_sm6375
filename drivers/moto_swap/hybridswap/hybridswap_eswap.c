@@ -214,6 +214,7 @@ static struct workqueue_struct *hybridswap_proc_write_workqueue;
 static char loop_device[DEVICE_NAME_LEN];
 
 struct mem_cgroup *find_memcg_by_id(unsigned short memcgid);
+struct mem_cgroup *find_memcg_by_id_ref(unsigned short memcgid);
 int obj_index(struct hyb_info *infos, int index);
 int eswap_index(struct hyb_info *infos, int index);
 int memcgindex(struct hyb_info *infos, int index);
@@ -2597,11 +2598,28 @@ int hybridswap_find_eswap_by_index(unsigned long eswpentry,
 
 	io_eswap->eswapid = eswapid;
 	io_eswap->zram = zram;
-	io_eswap->mcg = find_memcg_by_id(
+	/*
+	 * io_eswap->mcg outlives this function, so take the css reference
+	 * inside the lookup rather than after it - the old css_get() ran with
+	 * no protection at all and could resurrect a memcg already being torn
+	 * down. discard_io_eswapent() releases it via the css_put() at the end
+	 * of hybridswap_eswap_exception().
+	 */
+	io_eswap->mcg = find_memcg_by_id_ref(
 				hyb_entries_fetch_memcgid(eswap_index(zram->infos, eswapid),
 						  zram->infos->eswap_table));
-	if (io_eswap->mcg)
-		css_get(&io_eswap->mcg->css);
+	if (!io_eswap->mcg) {
+		/*
+		 * discard_io_eswapent() is the right way out: it owns the
+		 * ESWAP_PG_CNT pages alloc_io_eswapent() just took and returns them
+		 * to the pool, and on REQ_OP_READ it also does the put_eswap() for
+		 * us - doing both here as well would double-free the eswap slot.
+		 * io_eswap->mcg is NULL, so it uses io_eswap->zram and never touches
+		 * a css reference we did not acquire.
+		 */
+		discard_io_eswapent(io_eswap, REQ_OP_READ);
+		return -ENOENT;
+	}
 	buf->dest_pages = io_eswap->pages;
 	(*private) = io_eswap;
 	hybp(HYB_DEBUG, "fetch entry = %lx eswap = %d\n", eswpentry, eswapid);
@@ -3258,6 +3276,56 @@ struct mem_cgroup *find_memcg_by_id(unsigned short memcgid)
 	return mcg;
 }
 
+struct mem_cgroup *find_memcg_by_id_ref(unsigned short memcgid)
+{
+	struct mem_cgroup *mcg = NULL;
+
+	/*
+	 * mem_cgroup_from_id() takes no reference of its own, so a caller that
+	 * wants to keep the memcg past the rcu_read_lock() has to take one here
+	 * or it is racing memcg teardown. css_tryget() rather than css_get()
+	 * because the css may already be on its way out; it refuses rather than
+	 * resurrecting a dying one. On failure return NULL so the caller can
+	 * bail out instead of working on a half-dead memcg.
+	 *
+	 * The caller owns the returned reference and must css_put() it.
+	 */
+	rcu_read_lock();
+	mcg = mem_cgroup_from_id(memcgid);
+	if (mcg && !css_tryget(&mcg->css))
+		mcg = NULL;
+	rcu_read_unlock();
+
+	return mcg;
+}
+
+#ifdef CONFIG_HYBRIDSWAP_CORE
+/*
+ * For the fetch_node() callbacks, which hand back a pointer into the memcg's
+ * private data and so cannot hold a reference for the caller to release.
+ * Look up under rcu_read_lock() - idr_find() must not race an idr removal -
+ * and refuse a memcg that is already on its way out rather than building an
+ * offsetof() pointer into freed memory. css_is_dying() is the 5.4 spelling;
+ * there is no css_is_alive() in this tree.
+ */
+static struct mem_cgroup *find_memcg_by_id_locked(unsigned short memcgid)
+{
+	struct mem_cgroup *mcg = NULL;
+	bool dying;
+
+	rcu_read_lock();
+	mcg = mem_cgroup_from_id(memcgid);
+	if (mcg) {
+		dying = css_is_dying(&mcg->css);
+		if (dying)
+			mcg = NULL;
+	}
+	rcu_read_unlock();
+
+	return mcg;
+}
+#endif
+
 static bool frag_info_dec(bool prev_flag, bool next_flag,
 			 struct hybstatus *stat)
 {
@@ -3477,7 +3545,7 @@ static struct hyb_entries_head *fetch_objects_node(int index, void *private)
 		return &infos->maps[index];
 	index -= infos->nr_es;
 	if (index > 0 && index < infos->memcg_num) {
-		struct mem_cgroup *mcg = find_memcg_by_id(index);
+		struct mem_cgroup *mcg = find_memcg_by_id_locked(index);
 
 		if (!mcg)
 			goto err_out;
@@ -3563,7 +3631,7 @@ static struct hyb_entries_head *fetch_eswap_table_node(int index, void *private)
 		return &infos->eswap[index];
 	index -= infos->nr_es;
 	if (index > 0 && index < infos->memcg_num) {
-		struct mem_cgroup *mcg = find_memcg_by_id(index);
+		struct mem_cgroup *mcg = find_memcg_by_id_locked(index);
 
 		if (!mcg)
 			return NULL;
@@ -3582,10 +3650,13 @@ static void free_eswap_list_table(struct hyb_info *infos)
 		return;
 	}
 
-	if (infos->eswap)
+	if (infos->eswap) {
 		vfree(infos->eswap);
+		infos->eswap = NULL;
+	}
 
 	kfree(infos->eswap_table);
+	infos->eswap_table = NULL;
 }
 
 static int init_eswap_list_table(struct hyb_info *infos)
