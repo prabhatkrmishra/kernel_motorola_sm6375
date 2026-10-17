@@ -287,6 +287,8 @@ void swap_sorted_list_del(struct zram *zram, u32 index);
 void swap_maps_insert(struct zram *zram, u32 index);
 void swap_maps_destroy(struct zram *zram, u32 index);
 
+static void hybridswap_purge_memcg_entries(struct hyb_info *infos, int memcgid);
+
 static void hybridswapiowrkshow(struct seq_file *m, struct hybstatus *stat)
 {
 	int i;
@@ -2466,8 +2468,61 @@ void hybridswap_manager_memcg_deinit(struct mem_cgroup *mcg)
 		put_eswap(infos, eswapid);
 	}
 	hybp(HYB_DEBUG, "deinit mcg %d %s, eswap done\n", mcg->id.id, hybs->name);
+	hybridswap_purge_memcg_entries(infos, mcg->id.id);
 	hybs->zram = NULL;
 }
+
+/*
+ * Drop every index we still associate with a memcg id that is about to leave
+ * mem_cgroup_idr.
+ *
+ * swap_sorted_list and eswap_lru live inside the memcg, and mem_cgroup_idr
+ * recycles ids: mem_cgroup_idr is filled with idr_alloc(), which hands back the
+ * lowest free slot, so a new memcg can be given an id a dead one just held. An
+ * index left behind then resolves to the wrong memcg and we walk or edit its
+ * lists, and in the window where the slot is free but not yet reused idr_find()
+ * returns NULL and the node goes missing. Both are silent - no oops, just a
+ * mis-accounted or leaked entry.
+ *
+ * The id-remove hook runs before idr_remove(), so this is the last point at
+ * which mem_cgroup_from_id() still resolves and the memcg is still ours to
+ * inspect. Locking matches zram_fetch_mcg_last_index(), which walks the same
+ * list from this same hook context: a bit_spin_lock on the head node, with the
+ * cgroup_mutex we already hold providing the rest.
+ */
+static void hybridswap_purge_memcg_entries(struct hyb_info *infos, int memcgid)
+{
+	struct hyb_entries_table *tables[2];
+	int i;
+
+	if (!infos || memcgid <= 0 || memcgid >= infos->memcg_num)
+		return;
+
+	tables[0] = infos->objects;
+	tables[1] = infos->eswap_table;
+
+	for (i = 0; i < 2; i++) {
+		int idx, tmp;
+
+		if (!tables[i])
+			continue;
+
+		hyb_lock_with_idx(memcgindex(infos, memcgid), tables[i]);
+		hyb_entries_for_each_entry_safe(idx, tmp,
+			memcgindex(infos, memcgid), tables[i])
+			hyb_entries_del_nolock(idx,
+				memcgindex(infos, memcgid), tables[i]);
+		hyb_unlock_with_idx(memcgindex(infos, memcgid), tables[i]);
+	}
+
+	/*
+	 * memcgid_cnt is keyed by id and is not zeroed when a memcg dies, so a
+	 * recycled id would inherit the old count and skip the ++ that keeps
+	 * stat->mcg_cnt and stat->frag_cnt in step.
+	 */
+	infos->memcgid_cnt[memcgid] = 0;
+}
+
 void hybridswap_swap_sorted_list_add(struct zram *zram,
 			    u32 index, struct mem_cgroup *memcg)
 {
@@ -3579,8 +3634,18 @@ static struct hyb_entries_head *fetch_objects_node(int index, void *private)
 	if (index > 0 && index < infos->memcg_num) {
 		struct mem_cgroup *mcg = find_memcg_by_id(index);
 
+		/*
+		 * idr_alloc() recycles ids, so a stale index can resolve to a
+		 * different memcg than the one it was recorded for. Refuse
+		 * rather than hand back the wrong list.
+		 */
 		if (!mcg)
 			goto err_out;
+		if (mcg->id.id != index) {
+			hybp(HYB_ERR, "id %d resolves to mcg %d, stale index\n",
+				index, mcg->id.id);
+			goto err_out;
+		}
 		return (struct hyb_entries_head *)(&MEMCGRP_ITEM(mcg, swap_sorted_list));
 	}
 err_out:
@@ -3667,6 +3732,11 @@ static struct hyb_entries_head *fetch_eswap_table_node(int index, void *private)
 
 		if (!mcg)
 			return NULL;
+		if (mcg->id.id != index) {
+			hybp(HYB_ERR, "id %d resolves to mcg %d, stale index\n",
+				index, mcg->id.id);
+			return NULL;
+		}
 		return (struct hyb_entries_head *)(&MEMCGRP_ITEM(mcg, eswap_lru));
 	}
 err_out:
