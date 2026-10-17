@@ -1722,13 +1722,24 @@ static void discard_io_eswapent(struct io_eswapent *io_eswap, unsigned int op)
 		zram = io_eswap->zram;
 	else
 		zram = MEMCGRP_ITEM(io_eswap->mcg, zram);
+	/*
+	 * Return the pages before the zram check. They belong to io_eswap, not
+	 * to the device, so the "!zram" bail-out below used to skip the recycle
+	 * loop and drop all ESWAP_PG_CNT pages on the floor - and that is
+	 * exactly the state a memcg teardown leaves behind, since
+	 * hybridswap_manager_memcg_deinit() sets hybs->zram = NULL. Clear each
+	 * slot as we go so the pointers cannot be recycled twice.
+	 */
+	for (i = 0; i < (int)ESWAP_PG_CNT; i++) {
+		if (io_eswap->pages[i]) {
+			hybridswap_page_recycle(io_eswap->pages[i], io_eswap->pool);
+			io_eswap->pages[i] = NULL;
+		}
+	}
 	if (!zram) {
 		hybp(HYB_ERR, "NULL zram\n");
 		goto out;
 	}
-	for (i = 0; i < (int)ESWAP_PG_CNT; i++)
-		if (io_eswap->pages[i])
-			hybridswap_page_recycle(io_eswap->pages[i], io_eswap->pool);
 	if (io_eswap->eswapid < 0)
 		goto out;
 	hybp(HYB_DEBUG, "eswap = %d, op = %d\n", io_eswap->eswapid, op);
@@ -2130,7 +2141,7 @@ out:
 		css_put(&mcg->css);
 }
 
-static void eswap_clear(struct zram *zram, int eswapid)
+static int eswap_clear(struct zram *zram, int eswapid)
 {
 	int *index = NULL;
 	int cnt;
@@ -2139,13 +2150,22 @@ static void eswap_clear(struct zram *zram, int eswapid)
 
 	if (!stat) {
 		hybp(HYB_ERR, "NULL stat\n");
-		return;
+		return -EINVAL;
 	}
 
-	index = kzalloc(sizeof(int) * ESWAP_MAX_OBJ_CNT, GFP_ATOMIC);
-	if (!index)
-		index = kzalloc(sizeof(int) * ESWAP_MAX_OBJ_CNT,
-				GFP_ATOMIC | __GFP_NOFAIL);
+	/*
+	 * eswap_clear() runs from hybridswap_manager_memcg_deinit(), which is
+	 * reached from the cgroup teardown hook, so this is process context and
+	 * can sleep. The old GFP_ATOMIC retry with __GFP_NOFAIL could never make
+	 * progress: __GFP_NOFAIL retries forever while GFP_ATOMIC forbids direct
+	 * reclaim and forbids sleeping, so a rmdir under memory pressure would
+	 * hang the teardown indefinitely. GFP_KERNEL can fail, so handle it.
+	 */
+	index = kzalloc(sizeof(int) * ESWAP_MAX_OBJ_CNT, GFP_KERNEL);
+	if (!index) {
+		hybp(HYB_ERR, "index alloc failed\n");
+		return -ENOMEM;
+	}
 
 	cnt = swap_maps_fetch_eswap_index(zram->infos, eswapid, index);
 
@@ -2162,6 +2182,7 @@ static void eswap_clear(struct zram *zram, int eswapid)
 	}
 
 	kfree(index);
+	return 0;
 }
 
 static int shrink_entry(struct zram *zram, u32 index, struct io_eswapent *io_eswap,
@@ -2403,7 +2424,15 @@ void hybridswap_manager_memcg_deinit(struct mem_cgroup *mcg)
 		if (eswapid == -ENOENT)
 			break;
 
-		eswap_clear(zram, eswapid);
+		/*
+		 * eswap_clear() can now fail where __GFP_NOFAIL made it
+		 * infallible. If it did, the zram slots for this eswapid still
+		 * carry the old memcgid, so stop here rather than clearing the
+		 * eswap table and put_eswap()ing an entry those slots still
+		 * point at.
+		 */
+		if (eswap_clear(zram, eswapid))
+			break;
 		hyb_entries_set_memcgid(eswap_index(infos, eswapid), infos->eswap_table, 0);
 		put_eswap(infos, eswapid);
 	}
@@ -4350,6 +4379,14 @@ static int hybridswap_core_init(struct zram *zram)
 	if (unlikely(ret)) {
 		hybp(HYB_ERR, "bind storage device failed! %d\n", ret);
 		hybridswap_global_setting_deinit();
+		/*
+		 * Report it. Returning 0 told the sysfs caller the bind had
+		 * succeeded while hybridswap_global_setting_deinit() had already
+		 * freed global_settings.stat and torn down the reclaim workqueue,
+		 * leaving half a subsystem behind with the only sign of trouble in
+		 * the kernel log.
+		 */
+		return ret;
 	}
 
 	return 0;
@@ -4440,8 +4477,11 @@ ssize_t hybridswap_loop_device_store(struct device *dev,
 	}
 
 	ret = hybridswap_core_init(zram);
-	if (ret)
+	if (ret) {
 		hybp(HYB_ERR, "hybridswap_core_init init failed\n");
+		up_write(&zram->init_lock);
+		return ret;
+	}
 
 out:
 	up_write(&zram->init_lock);
@@ -4525,17 +4565,38 @@ ssize_t hybridswap_quota_day_show(struct device *dev,
 }
 
 ssize_t hybridswap_zram_increase_store(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t len)
+			struct device_attribute *attr, const char *buf, size_t len)
 {
 	char *type_buf = NULL;
 	unsigned long val;
+	unsigned long nr_pages;
 	struct zram *zram = dev_to_zram(dev);
 
 	type_buf = strstrip((char *)buf);
 	if (kstrtoul(type_buf, 0, &val))
 		return -EINVAL;
 
-	zram->increase_nr_pages = (val << 8);
+	/*
+	 * The stored value is consumed by fetch_nr_zram_total(), which does
+	 * "disksize >> PAGE_SHIFT - increase_nr_pages" in unsigned long. Two
+	 * things had to be bounded here:
+	 *   - val << 8 wraps for val >= 2^56, so cap against ULONG_MAX >> 8;
+	 *   - anything above the zram page count makes that subtraction wrap
+	 *     to ~2^64, after which zram_watermark_ok() computes a scale of
+	 *     essentially zero and never asks for swapout again.
+	 * Also take init_lock: this is the only one of these store handlers
+	 * that was writing zram state without it.
+	 */
+	if (val > (ULONG_MAX >> 8))
+		return -EINVAL;
+
+	down_write(&zram->init_lock);
+	nr_pages = zram->disksize >> PAGE_SHIFT;
+	if (val > nr_pages)
+		val = nr_pages;
+	zram->increase_nr_pages = val << 8;
+	up_write(&zram->init_lock);
+
 	return len;
 }
 
@@ -5435,13 +5496,33 @@ static int hybridswap_page_fault_fetch_eswap(struct zram *zram,
 	if (wait_cycle >= 1000)
 		atomic_long_dec(&page_fault_pause);
 #endif
-	if (ret)
+	if (ret) {
+		/*
+		 * The EIO bail-out above, same situation as the -EAGAIN exit:
+		 * io_work_arg is on the caller's stack, so nothing can free the
+		 * entry once we return.
+		 */
+		if (ret == -EIO)
+			hybridswap_free(iowork->ioentry);
 		return ret;
+	}
 	if (iowork->ioentry->eswapid < 0) {
-		hybstatus_alloc_fail(HYB_FAULT_OUT,
-				iowork->ioentry->eswapid);
+		int err = iowork->ioentry->eswapid;
 
-		return iowork->ioentry->eswapid;
+		hybstatus_alloc_fail(HYB_FAULT_OUT, err);
+
+		/*
+		 * Release the entry before bailing. hybridswap_page_fault() keeps
+		 * its io_work_arg on the stack, so once we return there is nobody
+		 * left who could free this - and the -EAGAIN exit above has to do
+		 * it for exactly that reason. Without it every page fault that
+		 * cannot allocate an eswapent leaks a hybridswap_entry, and that
+		 * happens under memory pressure, which is when it happens most.
+		 */
+		hybridswap_free(iowork->ioentry);
+		iowork->ioentry = NULL;
+
+		return err;
 	}
 	hybridswap_fault2_stat(zram, index);
 	hybridswap_fill_entry(iowork->ioentry, &iowork->io_buf,

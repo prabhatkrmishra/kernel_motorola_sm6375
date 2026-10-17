@@ -1423,6 +1423,8 @@ static inline u64 calc_shrink_scale(pg_data_t *pgdat)
 		memcg_hybs_t *hybs;
 
 		hybs = MEMCGRP_ITEM_DATA(memcg);
+		if (!hybs)
+			continue;
 		thresh = atomic_read(&hybs->mem2zram_scale);
 		if (!thresh || fetch_memcg_pagefault_status(memcg, pgdat)) {
 			hybs->can_reclaimed = 0;
@@ -1492,7 +1494,8 @@ static unsigned long swapd_shrink_anon(pg_data_t *pgdat,
         if (reclaim_pages_this_cycle <= 0) break;
 
 		while ((memcg = fetch_next_memcg(memcg))) {
-			unsigned long memcg_nr_reclaimed, memcg_to_reclaim;
+			unsigned long memcg_nr_reclaimed = 0;
+			unsigned long memcg_to_reclaim;
 			memcg_hybs_t *hybs;
 
 			if (high_buffer_is_suitable() || atomic_read(&swapd_pause)) {
@@ -1502,6 +1505,8 @@ static unsigned long swapd_shrink_anon(pg_data_t *pgdat,
 			}
 
 			hybs = MEMCGRP_ITEM_DATA(memcg);
+			if (!hybs)
+				continue;
 			if (!hybs->can_reclaimed)
 				continue;
 
