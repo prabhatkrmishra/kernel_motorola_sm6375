@@ -52,6 +52,7 @@
 #define HYBRIDSWAP_READ_TIME		10
 #define HYBRIDSWAP_WRITE_TIME		100
 #define HYB_FAULT_OUT_TIME		10
+#define HYB_UNTRACK_WAIT_TIME		1000
 #define CLASS_NAME_LEN			32
 #define MBYTE_SHIFT			20
 #define ENTRY_PTR_SHIFT			23
@@ -4632,14 +4633,42 @@ void hybridswap_record(struct zram *zram, u32 index,
 
 void hybridswap_untrack(struct zram *zram, u32 index)
 {
+	unsigned long deadline;
+	unsigned long next_log = 0;
+
 	if (!hybridswap_core_enabled())
 		return;
 
-	while (zram_test_flag(zram, index, ZRAM_UNDER_WB) ||
-			zram_test_flag(zram, index, ZRAM_BATCHING_OUT)) {
+	deadline = jiffies + msecs_to_jiffies(HYB_UNTRACK_WAIT_TIME);
+
+	/*
+	 * The peer that clears these flags can itself be blocked on storage I/O,
+	 * so wait for a bounded time rather than spinning forever. Retaking the
+	 * slot bitlock across a sleep is safe because every caller reaches us
+	 * with that lock already held.
+	 */
+	for (;;) {
+		if (!zram_test_flag(zram, index, ZRAM_UNDER_WB) &&
+			!zram_test_flag(zram, index, ZRAM_BATCHING_OUT))
+			break;
+
+		if (time_after_eq(jiffies, deadline)) {
+			hybp(HYB_ERR,
+				"index %u still under wb, skip untrack\n",
+				index);
+			return;
+		}
+
 		zram_slot_unlock(zram, index);
-		udelay(50);
+		usleep_range(50, 100);
 		zram_slot_lock(zram, index);
+
+		/* throttle the log; the peer needs real time to make progress */
+		if (time_after_eq(jiffies, next_log)) {
+			hybp(HYB_WARN, "index %u waiting on wb untrack\n",
+				index);
+			next_log = jiffies + msecs_to_jiffies(100);
+		}
 	}
 
 	hybridswap_swap_sorted_list_del(zram, index);

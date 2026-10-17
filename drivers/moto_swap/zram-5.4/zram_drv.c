@@ -1096,9 +1096,18 @@ static void zram_meta_free(struct zram *zram, u64 disksize)
 	size_t num_pages = disksize >> PAGE_SHIFT;
 	size_t index;
 
-	/* Free all pages that are still in this zram device */
-	for (index = 0; index < num_pages; index++)
+	/*
+	 * Every other zram_free_page() caller holds the slot bitlock, and with
+	 * CONFIG_HYBRIDSWAP_CORE zram_free_page() reaches hybridswap_untrack(),
+	 * which drops and retakes it. Take it here too so the invariant holds on
+	 * this path as well; releasing a lock that was never taken left the slot
+	 * permanently locked and spun on a flag nobody could clear.
+	 */
+	for (index = 0; index < num_pages; index++) {
+		zram_slot_lock(zram, index);
 		zram_free_page(zram, index);
+		zram_slot_unlock(zram, index);
+	}
 
 	zs_destroy_pool(zram->mem_pool);
 	vfree(zram->table);
@@ -1132,6 +1141,7 @@ static bool zram_meta_alloc(struct zram *zram, u64 disksize)
 static void zram_free_page(struct zram *zram, size_t index)
 {
 	unsigned long handle;
+	bool counted = false;
 
 #ifdef CONFIG_HYBRIDSWAP_ZRAM_MEMORY_TRACKING
 	zram->table[index].ac_time = 0;
@@ -1149,9 +1159,25 @@ static void zram_free_page(struct zram *zram, size_t index)
 #endif
 
 	if (zram_test_flag(zram, index, ZRAM_WB)) {
+		/*
+		 * ZRAM_IN_BD means hybridswap has already moved this page out to
+		 * eswap. It discounted pages_stored and compr_data_size when it did
+		 * so, the handle now names an eswap entry rather than a zsmalloc
+		 * object, and the element was never a backing-device block index,
+		 * so there is nothing for free_block_bdev() to release either.
+		 * Decrementing again here is what drove the counters negative and
+		 * left mm_stat drifting. __move_to_zram() clears ZRAM_IN_BD and
+		 * adds both counters back, so once it has run zram owns them.
+		 */
+		if (zram_test_flag(zram, index, ZRAM_IN_BD)) {
+			zram_clear_flag(zram, index, ZRAM_IN_BD);
+			zram_clear_flag(zram, index, ZRAM_WB);
+			goto out;
+		}
+
 		zram_clear_flag(zram, index, ZRAM_WB);
 		free_block_bdev(zram, zram_get_element(zram, index));
-		atomic64_dec(&zram->stats.pages_stored);
+		counted = true;
 		goto out;
 	}
 
@@ -1162,21 +1188,34 @@ static void zram_free_page(struct zram *zram, size_t index)
 	if (zram_test_flag(zram, index, ZRAM_SAME)) {
 		zram_clear_flag(zram, index, ZRAM_SAME);
 		atomic64_dec(&zram->stats.same_pages);
-		atomic64_dec(&zram->stats.pages_stored);
+		counted = true;
 		goto out;
 	}
 
 	handle = zram_get_handle(zram, index);
-	if (!handle)
-		return;
+	if (!handle) {
+		/*
+		 * hybridswap_untrack() above can leave a slot that still reports a
+		 * nonzero obj_size with no handle: swap_sorted_list_del() clears
+		 * the handle for an eswap-owned page but not obj_size. Returning
+		 * here strands that size, so zram_allocated() keeps claiming the
+		 * slot and the WARN_ON_ONCE() below never runs. Jump to the tail
+		 * instead so the stale size is cleared. There is no handle to
+		 * free and hybridswap already adjusted the counters, so nothing
+		 * is counted here.
+		 */
+		goto out;
+	}
 
 	zs_free(zram->mem_pool, handle);
+	counted = true;
 
 	atomic64_sub(zram_get_obj_size(zram, index),
 			&zram->stats.compr_data_size);
-	atomic64_dec(&zram->stats.pages_stored);
 
 out:
+	if (counted)
+		atomic64_dec(&zram->stats.pages_stored);
 	zram_set_handle(zram, index, 0);
 	zram_set_obj_size(zram, index, 0);
 	WARN_ON_ONCE(zram->table[index].flags &
