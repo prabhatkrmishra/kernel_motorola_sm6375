@@ -3926,7 +3926,10 @@ SYSCALL_DEFINE5(move_mount,
 	//   in the per-app try-umount list and stay visible to non-su apps
 	//   even though they are hidden from mountinfo.
 	// - to_path is still valid here; it is path_put'ed at out_to below.
-	if (!ret && !(flags & MOVE_MOUNT_SET_GROUP) &&
+	// - no MOVE_MOUNT_SET_GROUP test is needed here: that flag does not exist
+	//   in this kernel's UAPI, and move_mount() rejects anything outside
+	//   MOVE_MOUNT__MASK, so a set-group move can never reach this point.
+	if (!ret &&
 	    susfs_is_auto_add_try_umount_for_bind_mount_enabled &&
 	    susfs_is_current_ksu_domain()) {
 		susfs_auto_add_try_umount_for_bind_mount(&to_path);
