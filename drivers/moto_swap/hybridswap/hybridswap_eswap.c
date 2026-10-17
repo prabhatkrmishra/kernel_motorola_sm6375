@@ -157,22 +157,50 @@ struct hyb_entries_table {
 };
 
 #define index_node(index, tab) ((tab)->fetch_node((index), (tab)->private))
-#define next_index(index, tab) (index_node((index), (tab))->next)
-#define prev_index(index, tab) (index_node((index), (tab))->prev)
+/*
+ * fetch_node() returns NULL when a node cannot be resolved - notably a memcg
+ * that is already dying, which find_memcg_by_id_locked() rejects. The old
+ * unguarded macro dereferenced it, which NULL-derefed in
+ * fetch_memcg_zram_entry() during hybridswap_manager_memcg_deinit().
+ *
+ * Return the index unchanged for a dead node so nothing is dereferenced, and
+ * let node_resolves() end the walk. The self-reference alone is not enough:
+ * it only terminates when the dead node is the head, and a dead node mid-list
+ * would leave the loop spinning on itself forever.
+ */
+#define next_index(index, tab) \
+	({ struct hyb_entries_head *__n = index_node((index), (tab)); \
+	    __n ? __n->next : (index); })
+#define prev_index(index, tab) \
+	({ struct hyb_entries_head *__n = index_node((index), (tab)); \
+	    __n ? __n->prev : (index); })
+#define node_resolves(index, tab) (index_node((index), (tab)) != NULL)
 #define is_last_index(index, hindex, tab) (next_index(index, tab) == (hindex))
 #define is_first_index(index, hindex, tab) (prev_index(index, tab) == (hindex))
 #define hyb_entries_for_each_entry(index, hindex, tab) \
 	for ((index) = next_index((hindex), (tab)); \
-		(index) != (hindex); (index) = next_index((index), (tab)))
+		(index) != (hindex) && node_resolves((index), (tab)); \
+		(index) = next_index((index), (tab)))
 #define hyb_entries_for_each_entry_safe(index, tmp, hindex, tab) \
-	for ((index) = next_index((hindex), (tab)), (tmp) = next_index((index), (tab)); \
-		(index) != (hindex); (index) = (tmp), (tmp) = next_index((index), (tab)))
+	for ((index) = next_index((hindex), (tab)), \
+	     (tmp) = node_resolves((index), (tab)) ? \
+		    next_index((index), (tab)) : (hindex); \
+		(index) != (hindex) && node_resolves((index), (tab)); \
+		(index) = (tmp), \
+		(tmp) = node_resolves((index), (tab)) ? \
+			    next_index((index), (tab)) : (hindex))
 #define hyb_entries_for_each_entry_reverse(index, hindex, tab) \
 	for ((index) = prev_index((hindex), (tab)); \
-		(index) != (hindex); (index) = prev_index((index), (tab)))
+		(index) != (hindex) && node_resolves((index), (tab)); \
+		(index) = prev_index((index), (tab)))
 #define hyb_entries_for_each_entry_reverse_safe(index, tmp, hindex, tab) \
-	for ((index) = prev_index((hindex), (tab)), (tmp) = prev_index((index), (tab)); \
-		(index) != (hindex); (index) = (tmp), (tmp) = prev_index((index), (tab)))
+	for ((index) = prev_index((hindex), (tab)), \
+	     (tmp) = node_resolves((index), (tab)) ? \
+		    prev_index((index), (tab)) : (hindex); \
+		(index) != (hindex) && node_resolves((index), (tab)); \
+		(index) = (tmp), \
+		(tmp) = node_resolves((index), (tab)) ? \
+			    prev_index((index), (tab)) : (hindex))
 
 static unsigned long warn_level[HYB_CLASS_BUTT] = {
 	0, 500, 500, 0
