@@ -1743,14 +1743,17 @@ static int swapd_cpu_online(unsigned int cpu)
 
 	for_each_node_state(nid, N_MEMORY) {
 		pg_data_t *pgdat = NODE_DATA(nid);
-		struct hybridswapd_task* hyb_task;
+		struct hybridswapd_task *hyb_task;
 		struct cpumask *mask;
 
 		hyb_task = PGDAT_ITEM_DATA(pgdat);
+		if (!hyb_task || !hyb_task->swapd)
+			continue;
+
 		mask = &hyb_task->swapd_bind_cpumask;
 
 		if (cpumask_any_and(cpu_online_mask, mask) < nr_cpu_ids)
-			set_cpus_allowed_ptr(PGDAT_ITEM(pgdat, swapd), mask);
+			set_cpus_allowed_ptr(hyb_task->swapd, mask);
 	}
 	return 0;
 }
