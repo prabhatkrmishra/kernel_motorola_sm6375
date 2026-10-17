@@ -2174,9 +2174,7 @@ out:
 
 static int eswap_clear(struct zram *zram, int eswapid)
 {
-	int *index = NULL;
-	int cnt;
-	int k;
+	u32 i;
 	struct hybstatus *stat = hybridswap_fetch_stat_obj();
 
 	if (!stat) {
@@ -2185,34 +2183,50 @@ static int eswap_clear(struct zram *zram, int eswapid)
 	}
 
 	/*
-	 * eswap_clear() runs from hybridswap_manager_memcg_deinit(), which is
-	 * reached from the cgroup teardown hook, so this is process context and
-	 * can sleep. The old GFP_ATOMIC retry with __GFP_NOFAIL could never make
-	 * progress: __GFP_NOFAIL retries forever while GFP_ATOMIC forbids direct
-	 * reclaim and forbids sleeping, so a rmdir under memory pressure would
-	 * hang the teardown indefinitely. GFP_KERNEL can fail, so handle it.
+	 * A page pushed out to eswap is in the eswap map and deliberately not
+	 * in the memcg's swap_sorted_list, so eswap_clear() and not the earlier
+	 * teardown walk is what has to clear its memcgid.
+	 *
+	 * Walk the map directly instead of collecting the slots into a scratch
+	 * buffer first. That buffer was the only thing here that could fail: on
+	 * GFP_KERNEL returning NULL this returned early with every one of those
+	 * slots still holding the memcg id of a memcg that is going away, and the
+	 * caller then stopped without clearing them. idr_alloc() recycles ids,
+	 * so a later walk matching that stale id against a live memcg would
+	 * match the wrong one.
+	 *
+	 * That means holding the eswap map bitlock across the zram_slot_lock()
+	 * below, where before the two were not held at the same time. Both are
+	 * bit_spin_lock() on the same preemption-disabled region, so neither can
+	 * sleep and neither can block on the other - but note the map bitlock is
+	 * now held for the length of the walk rather than just the copy.
+	 *
+	 * The original allocation was GFP_ATOMIC | __GFP_NOFAIL, which cannot
+	 * make progress - __GFP_NOFAIL retries forever while GFP_ATOMIC forbids
+	 * reclaim and forbids sleeping - so a rmdir under memory pressure hung
+	 * the teardown indefinitely.
 	 */
-	index = kzalloc(sizeof(int) * ESWAP_MAX_OBJ_CNT, GFP_KERNEL);
-	if (!index) {
-		hybp(HYB_ERR, "index alloc failed\n");
-		return -ENOMEM;
-	}
-
-	cnt = swap_maps_fetch_eswap_index(zram->infos, eswapid, index);
-
-	for (k = 0; k < cnt; k++) {
-		zram_slot_lock(zram, index[k]);
-		if (zram_test_overwrite(zram, index[k], eswapid)) {
-			zram_slot_unlock(zram, index[k]);
+	hyb_lock_with_idx(eswap_index(zram->infos, eswapid),
+			  zram->infos->objects);
+	hyb_entries_for_each_entry(i, eswap_index(zram->infos, eswapid),
+				   zram->infos->objects) {
+		if (i >= (u32)zram->infos->total_objects) {
+			hybp(HYB_ERR, "index = %d invalid\n", i);
 			continue;
 		}
-		zram_set_mcg(zram, index[k], 0);
-		zram_set_flag(zram, index[k], ZRAM_MCGID_CLEAR);
+		zram_slot_lock(zram, i);
+		if (zram_test_overwrite(zram, i, eswapid)) {
+			zram_slot_unlock(zram, i);
+			continue;
+		}
+		zram_set_mcg(zram, i, 0);
+		zram_set_flag(zram, i, ZRAM_MCGID_CLEAR);
 		atomic64_inc(&stat->memcgid_clear);
-		zram_slot_unlock(zram, index[k]);
+		zram_slot_unlock(zram, i);
 	}
+	hyb_unlock_with_idx(eswap_index(zram->infos, eswapid),
+			    zram->infos->objects);
 
-	kfree(index);
 	return 0;
 }
 
