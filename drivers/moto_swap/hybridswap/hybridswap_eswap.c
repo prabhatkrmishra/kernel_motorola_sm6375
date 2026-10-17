@@ -5298,6 +5298,7 @@ static int hybridswap_page_fault_fetch_eswap(struct zram *zram,
 		u32 index)
 {
 	int wait_cycle = 0;
+	int ret = 0;
 
 	iowork->io_buf.zram = zram;
 	iowork->data.zram = zram;
@@ -5334,7 +5335,8 @@ static int hybridswap_page_fault_fetch_eswap(struct zram *zram,
 			// Moto: waited enough, exit with EIO.
 			if (wait_cycle > 100000) {
 				hybp(HYB_ERR, "waited 100000 cycles in page fault, exit with EIO!\n");
-				return -EIO;
+				ret = -EIO;
+				break;
 			}
 
 			if (wait_cycle < 100)
@@ -5351,9 +5353,19 @@ static int hybridswap_page_fault_fetch_eswap(struct zram *zram,
 		}
 	}
 #ifdef CONFIG_HYBRIDSWAP_SWAPD
+	/*
+	 * One decrement for the increment taken at wait_cycle == 1000, on
+	 * every way out of the retry loop. The EIO bail-out used to return
+	 * from inside the loop and skip this, leaving the counter permanently
+	 * one too high; page_fault_pause gates all swap-out in swapd(), so a
+	 * single such page fault disabled hybridswap for the rest of the boot.
+	 * The -EAGAIN exit above predates this and decrements on its own.
+	 */
 	if (wait_cycle >= 1000)
 		atomic_long_dec(&page_fault_pause);
 #endif
+	if (ret)
+		return ret;
 	if (iowork->ioentry->eswapid < 0) {
 		hybstatus_alloc_fail(HYB_FAULT_OUT,
 				iowork->ioentry->eswapid);

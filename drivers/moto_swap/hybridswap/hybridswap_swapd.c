@@ -1248,20 +1248,44 @@ EXPORT_SYMBOL(get_hybridswap_meminfo);
 
 bool zram_watermark_ok(void)
 {
-	long long diff_buffers;
-	long long wm = 0;
-	long long cur_scale = 0;
-	unsigned long zram_used = hybridswap_fetch_zram_used_pages();
-	const unsigned int percent_constant = 100;
+	s64 diff_buffers;
+	s64 wm = 0;
+	s64 cur_scale = 0;
+	s64 base;
+	s64 percent_constant = 100;
+	u64 zram_used = hybridswap_fetch_zram_used_pages();
 
-	diff_buffers = fetch_high_mem_watermark_value() -
-		system_cur_usable_mem();
-	diff_buffers *= SZ_1M / PAGE_SIZE;
-	diff_buffers *= fetch_compress_scale_value() / 10;
-	diff_buffers = diff_buffers * percent_constant / fetch_nr_zram_total();
+	/*
+	 * The gap between the high memory watermark and what we can actually
+	 * use. Both operands are unsigned, so subtract them as signed: when
+	 * there is more free memory than the watermark the result is negative
+	 * and the watermark must not be lowered at all. Done in u32 the
+	 * subtraction wrapped to ~4e9, which scaled into a huge positive
+	 * diff_buffers, and min() then picked the wrong arm - the function
+	 * reported "fine" while memory was tight and stood down only as free
+	 * memory approached the watermark, i.e. exactly backwards.
+	 */
+	base = (s64)fetch_high_mem_watermark_value() -
+		(s64)system_cur_usable_mem();
+	if (base < 0)
+		base = 0;
 
-	cur_scale = zram_used * percent_constant / fetch_nr_zram_total();
-	wm  = min(fetch_zram_wm_scale_value(), fetch_zram_wm_scale_value()- diff_buffers);
+	diff_buffers = base * (SZ_1M / PAGE_SIZE);
+	diff_buffers *= (s64)(fetch_compress_scale_value() / 10);
+	diff_buffers = diff_buffers * percent_constant / (s64)fetch_nr_zram_total();
+
+	cur_scale = (s64)zram_used * percent_constant / (s64)fetch_nr_zram_total();
+
+	/*
+	 * min_t() with an explicit s64 so the comparison happens in signed
+	 * arithmetic; plain min() promotes the second operand to the u64 return
+	 * type of fetch_zram_wm_scale_value() and a negative diff_buffers turns
+	 * into a huge unsigned value again.
+	 */
+	wm = min_t(s64, (s64)fetch_zram_wm_scale_value(),
+		(s64)fetch_zram_wm_scale_value() - diff_buffers);
+	if (wm < 0)
+		wm = 0;
 
 	return cur_scale > wm;
 }
