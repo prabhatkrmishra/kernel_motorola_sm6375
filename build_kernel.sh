@@ -93,7 +93,7 @@ export SOURCE_DATE_EPOCH=1717300000
 case "$TOOLCHAIN" in
     aosp)
         # AOSP clang v20.0.0
-        LLVM_DIR="$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r416183b/bin"
+        LLVM_DIR="$ROOT_PATH/prebuilts-master/clang/host/linux-x86/clang-r547379/bin"
         ;;
     sdclang)
         # Qualcomm Snapdragon LLVM 19.0.0
@@ -121,10 +121,17 @@ LTO="$CLANG_LTO_TYPE" \
 TARGET_PRODUCT="$BUILD_TARGET_PRODUCT" \
 BUILD_KERNEL=1 \
 build/build.sh \
+    LLVM_IAS=0 \
     CLANG_TRIPLE=aarch64-linux-gnu- \
     CROSS_COMPILE=aarch64-linux-gnu- \
     CROSS_COMPILE_COMPAT=arm-linux-gnueabi- \
+    HOSTCC="$LLVM_DIR/clang" \
+    HOSTCXX="$LLVM_DIR/clang++" \
+    HOSTLD="$LLVM_DIR/ld.lld" \
+    HOSTAR="$LLVM_DIR/llvm-ar" \
+    HOSTLDFLAGS="-fuse-ld=lld" \
     CC="$LLVM_DIR/clang" \
+    AS="aarch64-linux-gnu-as" \
     LD="$LLVM_DIR/ld.lld" \
     AR="$LLVM_DIR/llvm-ar" \
     NM="$LLVM_DIR/llvm-nm" \
