@@ -24,8 +24,8 @@
 #define MAX_SET (128)
 
 #if defined(MM_INFO_SUPPORTED)
-int moto_mm_info_enabled = 0; // disabled by default because of overhead of hook and log.
-int moto_alloc_warn_ms = 100; // 100ms by default
+int moto_mm_info_enabled; /* 0 = off by default; hook and log cost time */
+int moto_alloc_warn_ms = MM_ALLOC_WARN_MS_DEFAULT;
 #endif // defined(MM_INFO_SUPPORTED)
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 10, 0)
@@ -48,7 +48,7 @@ static ssize_t proc_mm_info_enabled_write(struct file *file, const char __user *
 		return -EFAULT;
 
 	buffer[count] = '\0';
-	err = kstrtoint(strstrip(buffer), 16, &val);
+	err = kstrtoint(strstrip(buffer), 10, &val);
 	if (err)
 		return err;
 
@@ -133,13 +133,13 @@ int moto_mm_proc_init(void)
 #endif
 
 #if defined(MM_INFO_SUPPORTED)
-	proc_node = proc_create("mm_info_enabled", 0666, d_moto_mm, &proc_mm_info_enabled_fops);
+	proc_node = proc_create("mm_info_enabled", 0644, d_moto_mm, &proc_mm_info_enabled_fops);
 	if (!proc_node) {
 		pr_err("failed to create proc node mm_info_enabled\n");
 		goto err_creat_mm_info_enabled;
 	}
 
-	proc_node = proc_create("alloc_warn_ms", 0666, d_moto_mm, &proc_alloc_warn_ms_fops);
+	proc_node = proc_create("alloc_warn_ms", 0644, d_moto_mm, &proc_alloc_warn_ms_fops);
 	if (!proc_node) {
 		pr_err("failed to create proc node alloc_warn_ms\n");
 		goto err_creat_alloc_warn_ms;

@@ -91,7 +91,7 @@ static int __init moto_mm_init(void)
 
 	ret = register_all_hooks();
 	if (ret != 0)
-		return ret;
+		goto err_proc;
 
 #if defined(MM_INFO_SUPPORTED)
 	if (moto_mm_info_enabled > 0)
@@ -100,6 +100,11 @@ static int __init moto_mm_init(void)
 
 	pr_info("moto_mm_init succeed!\n");
 	return 0;
+
+err_proc:
+	moto_mm_proc_deinit();
+
+	return ret;
 }
 
 static void __exit moto_mm_exit(void)
@@ -112,7 +117,6 @@ static void __exit moto_mm_exit(void)
 	moto_mm_proc_deinit();
 
 	pr_info("moto_mm_exit succeed!\n");
-	return;
 }
 
 module_init(moto_mm_init);

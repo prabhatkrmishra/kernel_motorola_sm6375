@@ -33,17 +33,13 @@
 #define TUNE_INACTIVE_SUPPORTED
 #endif
 
-
-#define cond_trace_printk(cond, fmt, ...)	\
-do {										\
-	if (cond)								\
-		trace_printk(fmt, ##__VA_ARGS__);	\
-} while (0)
+/* slow-alloc threshold in ms; warn once an allocation takes longer than this */
+#define MM_ALLOC_WARN_MS_DEFAULT	100
 
 #define REGISTER_HOOK(name) do {\
 	rc = register_trace_android_vh_##name(name##_hook, NULL);\
 	if (rc) {\
-		pr_err("register hook %s failed", #name);\
+		pr_err("register hook %s failed\n", #name);\
 		goto err_out_##name;\
 	}\
 } while (0)

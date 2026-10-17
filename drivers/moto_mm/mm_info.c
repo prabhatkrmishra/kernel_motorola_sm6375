@@ -21,7 +21,7 @@
 
 #include "mm_common.h"
 
-bool mm_info_initialized = false;
+static bool mm_info_initialized;
 
 #if defined(MM_INFO_SUPPORTED)
 // 5.15+
@@ -89,7 +89,8 @@ int mm_info_init(void)
 {
 	int ret;
 
-	if (mm_info_initialized) return 0;
+	if (mm_info_initialized)
+		return 0;
 
 	ret = register_mm_info_hooks();
 	if (ret != 0)
@@ -103,8 +104,9 @@ int mm_info_init(void)
 
 void mm_info_exit(void)
 {
-	if (!mm_info_initialized) return;
-	
+	if (!mm_info_initialized)
+		return;
+
 	unregister_mm_info_hooks();
 
 	mm_info_initialized = false;
