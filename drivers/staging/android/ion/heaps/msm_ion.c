@@ -250,9 +250,15 @@ bool msm_ion_heap_is_secure(int heap_id)
 {
 	struct ion_heap *heap = ion_heap_by_id(heap_id);
 
-	if (IS_ERR(heap) || !(heap->type == ION_HEAP_TYPE_SECURE_CARVEOUT ||
-			      heap->type == ION_HEAP_TYPE_SYSTEM_SECURE ||
-			      heap->type == ION_HEAP_TYPE_HYP_CMA))
+	/*
+	 * heap->type is an enum ion_heap_type, while the secure heap ids
+	 * below come from enum msm_ion_heap_types. All three fall inside
+	 * the custom range, ION_HEAP_TYPE_CUSTOM..ION_HEAP_TYPE_MAX, so
+	 * the comparison is intentional; cast away the enum mismatch.
+	 */
+	if (IS_ERR(heap) || !((int)heap->type == ION_HEAP_TYPE_SECURE_CARVEOUT ||
+			      (int)heap->type == ION_HEAP_TYPE_SYSTEM_SECURE ||
+			      (int)heap->type == ION_HEAP_TYPE_HYP_CMA))
 		return false;
 
 	return true;
