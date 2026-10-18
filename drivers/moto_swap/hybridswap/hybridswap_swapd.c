@@ -791,7 +791,7 @@ bool fetch_memcg_pagefault_status(struct mem_cgroup *memcg,
 		return false;
 
 	cur_anon_pagefault = hybridswap_read_mcg_stats(memcg, MCG_ANON_FAULT_CNT);
-	if (cur_anon_pagefault == hybs->reclaimed_pagefault)
+	if (cur_anon_pagefault <= hybs->reclaimed_pagefault)
 		return false;
 
 	anon_total = memcg_anon_pages(memcg) +
@@ -827,14 +827,14 @@ static bool fetch_infos_pagefault_status(void)
 {
 	const unsigned int percent_constant = 1000;
 	unsigned long long cur_anon_pagefault;
-	unsigned long long cur_time;
+	unsigned long cur_time;
 	unsigned long long scale = 0;
 
 	cur_anon_pagefault = hybridswap_fetch_zram_pagefault();
 	cur_time = jiffies;
 
-	if (cur_anon_pagefault == infos_last_anon_pagefault
-			|| cur_time == last_refresh_t)
+	if (cur_anon_pagefault <= infos_last_anon_pagefault
+			|| time_before_eq(cur_time, last_refresh_t))
 		goto false_out;
 
 	scale = (cur_anon_pagefault - infos_last_anon_pagefault) *
@@ -846,7 +846,7 @@ static bool fetch_infos_pagefault_status(void)
 	if (scale > fetch_infos_pagefault_level_value())
 		return true;
 
-	hybp(HYB_DEBUG, "current %llu t %llu last %llu t %lu scale %llu pagefault_scale %llu\n",
+	hybp(HYB_DEBUG, "current %llu t %lu last %llu t %lu scale %llu pagefault_scale %llu\n",
 			cur_anon_pagefault, cur_time,
 			infos_last_anon_pagefault, last_refresh_t,
 			scale, (unsigned long long)infos_pagefault_level.counter);
@@ -1162,8 +1162,12 @@ struct cftype mem_cgroup_swapd_legacy_files[] = {
 
 void wakeup_refresh_daemon(void)
 {
-	unsigned long curr_refresh =
-		jiffies_to_msecs(jiffies - last_refresh_t);
+	unsigned long curr_refresh;
+
+	if (time_before_eq(jiffies, last_refresh_t))
+		return;
+
+	curr_refresh = jiffies_to_msecs(jiffies - last_refresh_t);
 
 	if (curr_refresh >=
 			fetch_pagefault_refresh_min_value()) {
@@ -1196,6 +1200,7 @@ static int refresh_daemon(void *p)
 
 static int refresh_daemonrun(void)
 {
+	last_refresh_t = jiffies;
 	atomic_set(&refresh_daemonwait_flag, 0);
 	init_waitqueue_head(&refresh_daemonwait);
 	refresh_daemontask = kthread_run(refresh_daemon, NULL, "snapshotd");
