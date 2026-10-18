@@ -146,16 +146,16 @@ ssize_t hybridswap_vmstat_show(struct device *dev,
 	all_hybridswap_vm_events(vm_buf);
 
 #ifdef CONFIG_HYBRIDSWAP_SWAPD
-	len += snprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
+	len += scnprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
 			"page_fault_pause", atomic_long_read(&page_fault_pause));
-	len += snprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
+	len += scnprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
 			"page_fault_pause_cnt", atomic_long_read(&page_fault_pause_cnt));
 #endif
 
 	for (;i < NR_EVENT_ITEMS; i++) {
-		len += snprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
+		len += scnprintf(buf + len, PAGE_SIZE - len, "%-32s %12lu\n",
 				swapd_text[i], vm_buf[i]);
-		if (len == PAGE_SIZE)
+		if (len >= PAGE_SIZE)
 			break;
 	}
 	kfree(vm_buf);
@@ -201,7 +201,7 @@ memcg_hybs_t *hybridswap_cache_alloc(struct mem_cgroup *memcg, bool atomic)
 	gfp_t flags = GFP_KERNEL;
 
 	if (MEMCG_OEM_DATA(memcg))
-		BUG();
+		return (memcg_hybs_t *)MEMCG_OEM_DATA(memcg);
 
 	if (atomic)
 		flags &= ~__GFP_DIRECT_RECLAIM;
@@ -275,9 +275,6 @@ static void tune_swappiness_hook(void *data, int *swappiness)
 
 static void mem_cgroup_alloc_hook(void *data, struct mem_cgroup *memcg)
 {
-	if (MEMCG_OEM_DATA(memcg))
-		BUG();
-
 	hybridswap_cache_alloc(memcg, true);
 }
 
