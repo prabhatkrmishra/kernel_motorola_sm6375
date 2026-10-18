@@ -3056,8 +3056,8 @@ void swap_maps_insert(struct zram *zram, u32 index)
 	unsigned long eswpentry;
 	u32 eswapid;
 
-	if (!zram) {
-		hybp(HYB_ERR, "NULL zram\n");
+	if (!zram || !zram->infos) {
+		hybp(HYB_ERR, "NULL zram or infos\n");
 		return;
 	}
 	if (index >= (u32)zram->infos->total_objects) {
@@ -3067,6 +3067,11 @@ void swap_maps_insert(struct zram *zram, u32 index)
 
 	eswpentry = zram_get_handle(zram, index);
 	eswapid = esentry_extid(eswpentry);
+	if (eswapid >= (u32)zram->infos->nr_es) {
+		hybp(HYB_ERR, "eswapid = %u invalid\n", eswapid);
+		return;
+	}
+
 	hyb_entries_add_tail(obj_index(zram->infos, index),
 			eswap_index(zram->infos, eswapid),
 			zram->infos->objects);
@@ -3077,8 +3082,8 @@ void swap_maps_destroy(struct zram *zram, u32 index)
 	unsigned long eswpentry;
 	u32 eswapid;
 
-	if (!zram) {
-		hybp(HYB_ERR, "NULL zram\n");
+	if (!zram || !zram->infos) {
+		hybp(HYB_ERR, "NULL zram or infos\n");
 		return;
 	}
 	if (index >= (u32)zram->infos->total_objects) {
@@ -3088,6 +3093,11 @@ void swap_maps_destroy(struct zram *zram, u32 index)
 
 	eswpentry = zram_get_handle(zram, index);
 	eswapid = esentry_extid(eswpentry);
+	if (eswapid >= (u32)zram->infos->nr_es) {
+		hybp(HYB_ERR, "eswapid = %u invalid\n", eswapid);
+		return;
+	}
+
 	hyb_entries_del(obj_index(zram->infos, index),
 		eswap_index(zram->infos, eswapid),
 		zram->infos->objects);
