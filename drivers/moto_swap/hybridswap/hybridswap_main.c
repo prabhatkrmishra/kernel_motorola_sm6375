@@ -770,7 +770,7 @@ struct mem_cgroup *fetch_next_memcg(struct mem_cgroup *prev)
 
 	spin_lock_irqsave(&grade_list_lock, flags);
 find_again:
-	if (unlikely(!prev))
+	if (unlikely(!prev || !MEMCGRP_ITEM_DATA(prev)))
 		pos = &grade_head;
 	else
 		pos = &MEMCGRP_ITEM(prev, grade_node);

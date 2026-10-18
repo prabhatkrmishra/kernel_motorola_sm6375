@@ -765,6 +765,8 @@ static void refresh_pagefaults(void)
 	struct mem_cgroup *memcg = NULL;
 
 	while ((memcg = fetch_next_memcg(memcg))) {
+		if (!MEMCGRP_ITEM_DATA(memcg))
+			continue;
 		MEMCGRP_ITEM(memcg, reclaimed_pagefault) =
 			hybridswap_read_mcg_stats(memcg, MCG_ANON_FAULT_CNT);
 	}
