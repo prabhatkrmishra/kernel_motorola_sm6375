@@ -1842,7 +1842,10 @@ static void destroy_swapd_thread(void)
 	int nid;
 	struct pglist_data *pgdat;
 
-	cpuhp_remove_state_nocalls(swapd_online);
+	if (swapd_online > 0) {
+		cpuhp_remove_state_nocalls(swapd_online);
+		swapd_online = 0;
+	}
 	for_each_node(nid) {
 		pgdat = NODE_DATA(nid);
 		if (!PGDAT_ITEM_DATA(pgdat))
