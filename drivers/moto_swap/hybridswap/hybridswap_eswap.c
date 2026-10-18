@@ -1750,7 +1750,7 @@ static void discard_io_eswapent(struct io_eswapent *io_eswap, unsigned int op)
 		hybp(HYB_ERR, "NULL io_eswap\n");
 		return;
 	}
-	if (!io_eswap->mcg)
+	if (!io_eswap->mcg || !MEMCGRP_ITEM_DATA(io_eswap->mcg))
 		zram = io_eswap->zram;
 	else
 		zram = MEMCGRP_ITEM(io_eswap->mcg, zram);
@@ -2015,7 +2015,7 @@ static void __move_to_zram(struct zram *zram, u32 index, unsigned long handle,
 	atomic64_dec(&stat->stored_pages);
 	atomic64_add(size, &stat->batchout_real_load);
 	atomic_dec(&zram->infos->eswap_stored_pages[io_eswap->eswapid]);
-	if (mcg) {
+	if (mcg && MEMCGRP_ITEM_DATA(mcg)) {
 		atomic64_sub(size, &MEMCGRP_ITEM(mcg, hybridswap_stored_size));
 		atomic64_dec(&MEMCGRP_ITEM(mcg, hybridswap_stored_pages));
 	}
@@ -2083,8 +2083,8 @@ static int eswap_unlock(struct io_eswapent *io_eswap)
 	}
 
 	mcg = io_eswap->mcg;
-	if (!mcg) {
-		hybp(HYB_ERR, "NULL mcg\n");
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg)) {
+		hybp(HYB_ERR, "NULL mcg or mcg data\n");
 		goto out;
 	}
 	zram = MEMCGRP_ITEM(mcg, zram);
@@ -2137,7 +2137,7 @@ static void eswap_add(struct io_eswapent *io_eswap,
 	}
 
 	mcg = io_eswap->mcg;
-	if (!mcg)
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg))
 		zram = io_eswap->zram;
 	else
 		zram = MEMCGRP_ITEM(mcg, zram);
@@ -2163,7 +2163,7 @@ static void eswap_add(struct io_eswapent *io_eswap,
 	hybp(HYB_DEBUG, "eswap add OK, free eswapid = %d.\n", eswapid);
 	hybridswap_free_eswap(zram->infos, io_eswap->eswapid);
 	io_eswap->eswapid = -EINVAL;
-	if (mcg) {
+	if (mcg && MEMCGRP_ITEM_DATA(mcg)) {
 		atomic64_inc(&MEMCGRP_ITEM(mcg, hybridswap_inextcnt));
 		atomic_dec(&MEMCGRP_ITEM(mcg, hybridswap_extcnt));
 	}
@@ -2296,6 +2296,10 @@ static int shrink_entry_list(struct io_eswapent *io_eswap)
 	}
 
 	mcg = io_eswap->mcg;
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg)) {
+		hybp(HYB_ERR, "NULL mcg or mcg data\n");
+		return -EINVAL;
+	}
 	zram = MEMCGRP_ITEM(mcg, zram);
 	hybp(HYB_DEBUG, "mcg = %d\n", mcg->id.id);
 	stored_size = atomic64_read(&MEMCGRP_ITEM(mcg, zram_stored_size));
@@ -2419,7 +2423,7 @@ void hybridswap_manager_memcg_deinit(struct mem_cgroup *mcg)
 	}
 
 	hybs = MEMCGRP_ITEM_DATA(mcg);
-	if (!hybs->zram)
+	if (!hybs || !hybs->zram)
 		return;
 
 	zram = hybs->zram;
@@ -2676,7 +2680,7 @@ void hybridswap_eswap_objs_del(struct zram *zram, u32 index)
 	atomic64_dec(&stat->stored_pages);
 	atomic64_add(size, &stat->dropped_eswap_size);
 	mcg = zram_fetch_mcg(zram, index);
-	if (mcg) {
+	if (mcg && MEMCGRP_ITEM_DATA(mcg)) {
 		atomic64_sub(size, &MEMCGRP_ITEM(mcg, hybridswap_stored_size));
 		atomic64_dec(&MEMCGRP_ITEM(mcg, hybridswap_stored_pages));
 	}
@@ -2690,7 +2694,7 @@ void hybridswap_eswap_objs_del(struct zram *zram, u32 index)
 		return;
 
 	atomic64_inc(&stat->notify_free);
-	if (mcg)
+	if (mcg && MEMCGRP_ITEM_DATA(mcg))
 		atomic64_inc(&MEMCGRP_ITEM(mcg, hybridswap_eswap_notify_free));
 	hybp(HYB_DEBUG, "free eswapid = %d\n", eswapid);
 	hybridswap_free_eswap(zram->infos, eswapid);
@@ -2762,8 +2766,8 @@ int hybridswap_find_eswap_by_memcg(struct mem_cgroup *mcg,
 	int eswapid;
 	struct io_eswapent *io_eswap = NULL;
 
-	if (!mcg) {
-		hybp(HYB_ERR, "NULL mcg\n");
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg) || !MEMCGRP_ITEM(mcg, zram) || !MEMCGRP_ITEM(mcg, zram)->infos) {
+		hybp(HYB_ERR, "invalid mcg\n");
 		return -EINVAL;
 	}
 	if (!buf) {
@@ -2933,8 +2937,12 @@ void swap_sorted_list_add(struct zram *zram, u32 index, struct mem_cgroup *memcg
 		hybp(HYB_ERR, "NULL stat\n");
 		return;
 	}
-	if (!zram) {
-		hybp(HYB_ERR, "NULL zram\n");
+	if (!zram || !zram->infos) {
+		hybp(HYB_ERR, "NULL zram or infos\n");
+		return;
+	}
+	if (!memcg || !MEMCGRP_ITEM_DATA(memcg)) {
+		hybp(HYB_ERR, "invalid memcg\n");
 		return;
 	}
 	if (index >= (u32)zram->infos->total_objects) {
@@ -2974,7 +2982,7 @@ void swap_sorted_list_add_tail(struct zram *zram, u32 index, struct mem_cgroup *
 		hybp(HYB_ERR, "NULL zram\n");
 		return;
 	}
-	if (!mcg || !MEMCGRP_ITEM(mcg, zram) || !MEMCGRP_ITEM(mcg, zram)->infos) {
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg) || !MEMCGRP_ITEM(mcg, zram) || !MEMCGRP_ITEM(mcg, zram)->infos) {
 		hybp(HYB_ERR, "invalid mcg\n");
 		return;
 	}
@@ -3026,7 +3034,7 @@ void swap_sorted_list_del(struct zram *zram, u32 index)
 	}
 
 	mcg = zram_fetch_mcg(zram, index);
-	if (!mcg || !MEMCGRP_ITEM(mcg, zram) || !MEMCGRP_ITEM(mcg, zram)->infos)
+	if (!mcg || !MEMCGRP_ITEM_DATA(mcg) || !MEMCGRP_ITEM(mcg, zram) || !MEMCGRP_ITEM(mcg, zram)->infos)
 		return;
 	if (zram_test_flag(zram, index, ZRAM_SAME))
 		return;
@@ -3661,6 +3669,8 @@ static struct hyb_entries_head *fetch_objects_node(int index, void *private)
 				index, mcg->id.id);
 			goto err_out;
 		}
+		if (!MEMCGRP_ITEM_DATA(mcg))
+			goto err_out;
 		return (struct hyb_entries_head *)(&MEMCGRP_ITEM(mcg, swap_sorted_list));
 	}
 err_out:
@@ -3752,6 +3762,8 @@ static struct hyb_entries_head *fetch_eswap_table_node(int index, void *private)
 				index, mcg->id.id);
 			return NULL;
 		}
+		if (!MEMCGRP_ITEM_DATA(mcg))
+			return NULL;
 		return (struct hyb_entries_head *)(&MEMCGRP_ITEM(mcg, eswap_lru));
 	}
 err_out:
@@ -4788,7 +4800,7 @@ static void hybridswap_memcg_iter(
 		ret = iter(mcg, data);
 		hybp(HYB_DEBUG, "%pS mcg %d %s %s, ret %d\n",
 					iter, mcg->id.id,
-					MEMCGRP_ITEM(mcg, name),
+					MEMCGRP_ITEM_DATA(mcg) ? MEMCGRP_ITEM(mcg, name) : "unknown",
 					ret ? "failed" : "pass",
 					ret);
 		if (ret) {
@@ -5395,7 +5407,7 @@ static int hybridswap_do_batches(struct mem_cgroup *mcg,
 	int errio = 0;
 	struct io_work_arg *iowork = NULL;
 
-	if (unlikely(!mcg || !MEMCGRP_ITEM(mcg, zram))) {
+	if (unlikely(!mcg || !MEMCGRP_ITEM_DATA(mcg) || !MEMCGRP_ITEM(mcg, zram))) {
 		hybp(HYB_WARN, "no zram in mcg!\n");
 		ret = -EINVAL;
 		goto out;
@@ -5476,7 +5488,7 @@ static void hybridswap_fault_stat(struct zram *zram, u32 index)
 	atomic64_inc(&stat->fault_cnt);
 
 	mcg = hybridswap_zram_fetch_mcg(zram, index);
-	if (mcg)
+	if (mcg && MEMCGRP_ITEM_DATA(mcg))
 		atomic64_inc(&MEMCGRP_ITEM(mcg, hybridswap_allfaultcnt));
 }
 
@@ -5491,7 +5503,7 @@ static void hybridswap_fault2_stat(struct zram *zram, u32 index)
 	atomic64_inc(&stat->hybridswap_fault_cnt);
 
 	mcg = hybridswap_zram_fetch_mcg(zram, index);
-	if (mcg)
+	if (mcg && MEMCGRP_ITEM_DATA(mcg))
 		atomic64_inc(&MEMCGRP_ITEM(mcg, hybridswap_faultcnt));
 }
 

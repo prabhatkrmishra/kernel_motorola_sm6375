@@ -325,9 +325,9 @@ typedef struct mem_cgroup_hybridswap {
 }memcg_hybs_t;
 
 #ifdef CONFIG_ZRAM_5_15
-#define MEMCGRP_ITEM_DATA(memcg) ((memcg_hybs_t *)(memcg)->android_oem_data1[0])
+#define MEMCGRP_ITEM_DATA(memcg) ((memcg) ? (memcg_hybs_t *)(memcg)->android_oem_data1[0] : NULL)
 #else
-#define MEMCGRP_ITEM_DATA(memcg) ((memcg_hybs_t *)(memcg)->android_oem_data1)
+#define MEMCGRP_ITEM_DATA(memcg) ((memcg) ? (memcg_hybs_t *)(memcg)->android_oem_data1 : NULL)
 #endif
 
 #define MEMCGRP_ITEM(memcg, item) (MEMCGRP_ITEM_DATA(memcg)->item)
